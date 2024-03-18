@@ -116,10 +116,10 @@ def result_queue_handler(output_folder, demo_queues, programs, examples, actual_
     Model = run_code_and_get_class(strip_ticks(program))
     print(f"Tested Program {pidx}")
     actual_scores.append(score)
-    print(f"Actual score: {score:.2f}")
+    print(f"Actual score: {score:.3f}")
     print(actual_scores)
     speed = n_examples / args.train_time
-    speed_text = f"Speed: {speed:.2f} examples per second. Completed {n_epochs:.2f} epochs."
+    speed_text = f"Speed: {speed:.3f} examples per second. Completed {n_epochs:.3f} epochs."
     print(speed_text)
     total_params, _ = get_model_parameters(Model())
     print("Total parameters:", total_params)
@@ -127,16 +127,16 @@ def result_queue_handler(output_folder, demo_queues, programs, examples, actual_
         program=program,
         analysis=analysis[:100] + "...",
         score=score,
-        explanation=f"Accuracy: {score:.2f}. Model with {total_params} parameters. {speed_text}",
+        explanation=f"Accuracy: {score:.3f}. Model with {total_params} parameters. {speed_text}",
     )
     examples.append(example)
     for demo_queue in demo_queues:
         demo_queue.put((pidx, example))
 
     # Save the program, analysis, and score to a text file
-    file_path = output_folder / f"{pidx}_{score:.2f}.txt"
+    file_path = output_folder / f"{pidx}_{score:.3f}.txt"
     with file_path.open("w") as f:
-        f.write(f"Score: {score:.2f}\n\n")
+        f.write(f"Score: {score:.6f}\n\n")
         f.write(f"Analysis:\n{analysis}\n\n")
         f.write(f"Program:\n{program}\n")
 
