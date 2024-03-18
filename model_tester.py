@@ -86,7 +86,10 @@ def compute_accuracy(model_class: str, args, test_run=False):
         fractional_epochs = batch_counter.batch_count / len(data_module.train_dataloader())
         return res[0]["test_acc"], n_examples, fractional_epochs
     finally:
-        data_module.teardown("fit")
+        try:
+            data_module.teardown("fit")
+        except Exception as e:
+            print(f"Warning: Could not teardown data module {e}")
 
 
 def model_tester(args, task_queue, result_queue, worker_idx):

@@ -30,7 +30,7 @@ class DataModule(LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             persistent_workers=True,
-            num_workers=12,
+            num_workers=3,
             shuffle=True,
             pin_memory=True,
         )
@@ -40,6 +40,6 @@ class DataModule(LightningDataModule):
             self.test_dataset,
             batch_size=self.batch_size,
             persistent_workers=False,
-            num_workers=12,
+            num_workers=3,
             pin_memory=True,
         )
