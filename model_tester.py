@@ -89,7 +89,11 @@ def compute_accuracy(model_class: str, args, test_run=False):
 def model_tester(args, task_queue, result_queue, worker_idx):
     while True:
         pidx, program = task_queue.get()
-        print(f"Worked {worker_idx} testing program {pidx}. Queue size: {task_queue.qsize()}")
+        try:
+            qsize = task_queue.qsize()
+        except NotImplementedError:
+            qsize = -1  # Not implemented on MacOS
+        print(f"Worked {worker_idx} testing program {pidx}. Queue size: {qsize}")
         Model = run_code_and_get_class(strip_ticks(program))
         score, n_examples, n_epochs = compute_accuracy(Model, args)
         result_queue.put((pidx, score, n_examples, n_epochs))
