@@ -1,0 +1,6 @@
+MNIST/
+__pycache__/
+assertion.log
+azure_openai_usage.log
+lightning_logs/
+openai_usage.log

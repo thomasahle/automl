@@ -18,6 +18,39 @@ suffix = """
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 """
 
+template = """
+import pytorch_lightning as pl
+import torch.nn as nn
+from torchvision import transforms
+...
+
+class ModelClassName(pl.LightningModule):
+    def __init__(self):
+        super().__init__()
+
+        # Define layers here
+        ...
+
+        # batch_size and transform are parameters used by the data loader
+        self.batch_size = 64
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            ...
+        ])
+
+    def forward(self, x):
+        ...
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        ...
+        return loss
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=1e-3)
+"""
+
 mnist = f"""
 {imports}
 class ImageModel(pl.LightningModule):
