@@ -97,7 +97,7 @@ def main():
                 model_queue_handler(task_queue, programs, value)
 
             elif input_queue is result_queue:
-                result_queue_handler(output_folder, demo_queues, programs, examples, actual_scores, value)
+                result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value)
 
     lm.inspect_history(n=2)
 
@@ -114,7 +114,15 @@ def main():
         plt.show()
 
 
-def result_queue_handler(output_folder, demo_queues, programs, examples, actual_scores, value):
+def get_queue_size(queue):
+    try:
+        qsize = queue.qsize()
+    except NotImplementedError:
+        qsize = -1  # Not implemented on MacOS
+    return qsize
+
+
+def result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value):
     pidx, score, n_examples, n_epochs = value
     program, analysis = programs[pidx]
     Model = run_code_and_get_class(strip_ticks(program))
@@ -135,7 +143,7 @@ def result_queue_handler(output_folder, demo_queues, programs, examples, actual_
     )
     examples.append(example)
     for demo_queue in demo_queues:
-        demo_queue.put((pidx, example))
+        demo_queue.put((pidx, example, get_queue_size(task_queue)))
 
     # Save the program, analysis, and score to a text file
     file_path = output_folder / f"{pidx}_{score:.3f}.txt"
@@ -154,11 +162,7 @@ def model_queue_handler(task_queue, programs, value):
     # print(f"Program ({pidx}):", program)
     task_queue.put((pidx, program))
     programs.append(value)
-    try:
-        qsize = task_queue.qsize()
-    except NotImplementedError:
-        qsize = -1  # Not implemented on MacOS
-    print(f"Added new program to queue. Queue size: {qsize}")
+    print(f"Added new program to queue. Queue size: {get_queue_size(task_queue)}")
 
 
 if __name__ == "__main__":

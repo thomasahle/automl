@@ -113,10 +113,17 @@ def model_producer(
     proposer = dspy.TypedPredictor(ImproveSignature, explain_errors=True, max_retries=args.max_retries)
 
     used_demo_subsets = set()
+    testing_backlog_size = 0
     demos = {}
     while True:
         while not demo_queue.empty():
-            pidx, demo = demo_queue.get()
+            pidx, demo, testing_backlog_size = demo_queue.get()
+            demos[pidx] = demo
+
+        # If we are getting ahead of the testers, wait for them to catch up
+        if testing_backlog_size > 10:
+            print(f"Worked {worker_idx} waiting for testers to catch up...")
+            pidx, demo, testing_backlog_size = demo_queue.get()
             demos[pidx] = demo
 
         if not demos:
@@ -146,7 +153,7 @@ def model_producer(
                 continue
 
             # Wait for the first result
-            pidx, demo = demo_queue.get()
+            pidx, demo, testing_backlog_size = demo_queue.get()
             demos[pidx] = demo
 
         best = sorted(demos.items(), key=lambda x: x[1].score, reverse=True)
@@ -159,7 +166,7 @@ def model_producer(
                 break
         else:
             # We've tried all subsets. Wait for a new demo.
-            pidx, demo = demo_queue.get()
+            pidx, demo, testing_backlog_size = demo_queue.get()
             demos[pidx] = demo
             continue
 
