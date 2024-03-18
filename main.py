@@ -15,7 +15,7 @@ from model_tester import model_tester, run_code_and_get_class, strip_ticks
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("dataset", choices=["mnist", "cifar"])
+parser.add_argument("dataset", choices=["mnist", "cifar10"])
 parser.add_argument("train_time", type=int, default=3)
 parser.add_argument("--devices", type=str)
 parser.add_argument("--accelerator", type=str, default="cpu")
@@ -23,6 +23,7 @@ parser.add_argument("--num-producers", type=int, default=2)
 parser.add_argument("--num-testers", type=int, default=1)
 parser.add_argument("--max-examples", type=int, default=30)
 parser.add_argument("--plot", action="store_true")
+parser.add_argument("--from-scratch", action="store_true", help="Whether to create the initial model from scratch.")
 args = parser.parse_args()
 
 

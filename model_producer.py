@@ -7,6 +7,7 @@ import pydantic
 
 import model_tester
 from default_progs import template
+import default_progs
 
 
 def get_model_parameters(model):
@@ -120,16 +121,25 @@ def model_producer(
 
         if not demos:
             if make_initial:
-                print(f"Making initial program from {worker_idx}...")
-                initial_proposer = dspy.TypedPredictor(InitialSignature, explain_errors=True, max_retries=10)
-                try:
-                    pred = initial_proposer()
-                except ValueError as e:
-                    print(f"Worked {worker_idx} failed: {e}")
-                    dspy.settings.lm.inspect_history(n=1)
-                    continue
-                print(f"Success! {worker_idx}")
-                model_queue.put((pred.program, "Baseline model."))
+                if args.from_scratch:
+                    print(f"Making initial program from {worker_idx}...")
+                    initial_proposer = dspy.TypedPredictor(InitialSignature, explain_errors=True, max_retries=10)
+                    try:
+                        pred = initial_proposer()
+                    except ValueError as e:
+                        print(f"Worked {worker_idx} failed: {e}")
+                        dspy.settings.lm.inspect_history(n=1)
+                        continue
+                    print(f"Success! {worker_idx}")
+                    program = pred.program
+                else:
+                    if args.dataset == "mnist":
+                        program = default_progs.mnist
+                    elif args.dataset == "cifar10":
+                        program = default_progs.cifar
+                    else:
+                        raise ValueError(f"Unsupported dataset: {args.dataset}")
+                model_queue.put((program, "Baseline model."))
                 make_initial = False
                 continue
 
