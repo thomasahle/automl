@@ -41,7 +41,7 @@ def main():
     # lm = dspy.OpenAI(model="gpt-3.5-turbo", max_tokens=4000)
     dspy.settings.configure(lm=lm)
 
-    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     output_folder = Path(f"best_programs_{current_time}")
     output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -148,12 +148,17 @@ def result_queue_handler(output_folder, demo_queues, programs, examples, actual_
 
 
 def model_queue_handler(task_queue, programs, value):
-    program, analysis = value
-    print("Anlysis:", analysis)
+    program, _analysis = value
+    # print("Anlysis:", analysis)
     pidx = len(programs)
-    print(f"Program ({pidx}):", program)
+    # print(f"Program ({pidx}):", program)
     task_queue.put((pidx, program))
     programs.append(value)
+    try:
+        qsize = task_queue.qsize()
+    except NotImplementedError:
+        qsize = -1  # Not implemented on MacOS
+    print(f"Added new program to queue. Queue size: {qsize}")
 
 
 if __name__ == "__main__":
