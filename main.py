@@ -75,11 +75,14 @@ def main():
         t.start()
 
     programs = []
+    # TODO: Consider taking a folder of existing programs here to use as a seed
     examples = []
     actual_scores = []
     while len(programs) < 100:
         # Wait for one of the queues to become non-empty
-        print("Waiting for workers...")
+        if all(q.empty() for q in demo_queues):
+            print("Waiting for workers...")
+            # TODO: Consdier spinning up more producer threads here...
         select.select([model_queue._reader, result_queue._reader], [], [])
 
         # All processing in this loop is fast and non-blocking. The blocking / hard work

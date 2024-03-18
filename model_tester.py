@@ -44,34 +44,37 @@ def strip_ticks(s):
 
 
 def compute_accuracy(model_class: str, args, test_run=False):
-    model = model_class()
+    if test_run:
+        trainer = pl.Trainer(
+            fast_dev_run=True,
+            enable_progress_bar=False,
+            enable_model_summary=False,
+            enable_checkpointing=False,
+            accelerator="cpu",
+            devices=1,
+        )
+    else:
+        batch_counter = BatchCounterCallback()
+        trainer = pl.Trainer(
+            max_time=timedelta(seconds=args.train_time),
+            accelerator=args.accelerator,
+            devices=1 if args.accelerator == "cpu" else args.devices,
+            callbacks=[batch_counter],  # Register the callback
+            enable_checkpointing=False,
+        )
+
+    # This initializes the model directly on gpu
+    with trainer.init_module():
+        model = model_class()
     batch_size = getattr(model, "batch_size", 64)
     transform = getattr(model, "transform", transforms.Compose([transforms.ToTensor()]))
     data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
-
     try:
         if test_run:
-            trainer = pl.Trainer(
-                fast_dev_run=True,
-                enable_progress_bar=False,
-                enable_model_summary=False,
-                enable_checkpointing=False,
-                accelerator="cpu",
-                devices=1,
-            )
             # We don't wrap this in a try-except block, because we want to see the error
             trainer.fit(model, datamodule=data_module)
             return None
-
         try:
-            batch_counter = BatchCounterCallback()
-            trainer = pl.Trainer(
-                max_time=timedelta(seconds=args.train_time),
-                accelerator=args.accelerator,
-                devices=1 if args.accelerator == "cpu" else args.devices,
-                callbacks=[batch_counter],  # Register the callback
-                enable_checkpointing=False,
-            )
             trainer.fit(model, datamodule=data_module)
             model.test_step = lambda *args: test_step(model, *args)  # Attach test_step
             res = trainer.test(model, dataloaders=data_module.test_dataloader(), verbose=False)

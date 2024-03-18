@@ -129,8 +129,8 @@ def model_producer(
                     try:
                         pred = initial_proposer()
                     except ValueError as e:
-                        print(f"Worked {worker_idx} failed: {e}")
                         dspy.settings.lm.inspect_history(n=1)
+                        print(f"Worked {worker_idx} failed: {e}")
                         continue
                     print(f"Success! {worker_idx}")
                     program = pred.program
