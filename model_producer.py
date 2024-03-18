@@ -169,8 +169,8 @@ def model_producer(
         try:
             pred = proposer(score=target_score)
         except ValueError as e:
-            print(f"Worked {worker_idx} failed: {e}")
             dspy.settings.lm.inspect_history(n=1)
+            print(f"Worked {worker_idx} failed: {e}")
             continue
         print(f"Success! {worker_idx}")
         model_queue.put((pred.program, pred.analysis))

@@ -1,3 +1,4 @@
+import time
 import pytorch_lightning as pl
 from torchvision import transforms
 from datetime import timedelta
@@ -68,11 +69,15 @@ def compute_accuracy(model_class: str, args, test_run=False):
         model = model_class()
     batch_size = getattr(model, "batch_size", 64)
     transform = getattr(model, "transform", transforms.Compose([transforms.ToTensor()]))
-    # data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
-    data_module = MemoryDataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
+
+    print("Setting up data module")
+    start = time.time()
+    data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset, test_run=test_run)
+    # data_module = MemoryDataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
     try:
-        data_module.prepare_data()
+        # data_module.prepare_data()
         data_module.setup()
+        print(f"Set up data module in {time.time() - start:.3f} seconds")
         if test_run:
             # We don't wrap this in a try-except block, because we want to see the error
             trainer.fit(model, datamodule=data_module)
