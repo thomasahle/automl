@@ -110,7 +110,7 @@ def model_producer(
     make_initial = worker_idx == 0
 
     ImproveSignature, InitialSignature = MySignature(args, personality)
-    proposer = dspy.TypedPredictor(ImproveSignature, explain_errors=True, max_retries=10)
+    proposer = dspy.TypedPredictor(ImproveSignature, explain_errors=True, max_retries=args.max_retries)
 
     used_demo_subsets = set()
     demos = {}
@@ -123,7 +123,9 @@ def model_producer(
             if make_initial:
                 if args.from_scratch:
                     print(f"Making initial program from {worker_idx}...")
-                    initial_proposer = dspy.TypedPredictor(InitialSignature, explain_errors=True, max_retries=10)
+                    initial_proposer = dspy.TypedPredictor(
+                        InitialSignature, explain_errors=True, max_retries=args.max_retries
+                    )
                     try:
                         pred = initial_proposer()
                     except ValueError as e:

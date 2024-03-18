@@ -26,6 +26,7 @@ parser.add_argument("--num-testers", type=int, default=1)
 parser.add_argument("--max-examples", type=int, default=30)
 parser.add_argument("--plot", action="store_true")
 parser.add_argument("--from-scratch", action="store_true", help="Whether to create the initial model from scratch.")
+parser.add_argument("--max-retries", type=int, default=10)
 args = parser.parse_args()
 
 
