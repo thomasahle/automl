@@ -6,3 +6,4 @@ lightning_logs/
 openai_usage.log
 cifar-10-batches-py/
 cifar-10-python.tar.gz
+best_programs*/

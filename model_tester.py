@@ -53,9 +53,14 @@ def compute_accuracy(model_class: str, args, test_run=False):
         if test_run:
             trainer = pl.Trainer(
                 fast_dev_run=True,
+                enable_progress_bar=False,
+                enable_model_summary=False,
+                enable_checkpointing=False,
+                log_level="WARNING",
                 accelerator="cpu",
                 devices=1,
             )
+            # We don't wrap this in a try-except block, because we want to see the error
             trainer.fit(model, datamodule=data_module)
             return None
 
@@ -66,6 +71,7 @@ def compute_accuracy(model_class: str, args, test_run=False):
                 accelerator=args.accelerator,
                 devices=1 if args.accelerator == "cpu" else args.devices,
                 callbacks=[batch_counter],  # Register the callback
+                enable_checkpointing=False,
             )
             trainer.fit(model, datamodule=data_module)
             model.test_step = lambda *args: test_step(model, *args)  # Attach test_step
@@ -84,7 +90,7 @@ def compute_accuracy(model_class: str, args, test_run=False):
 def model_tester(args, task_queue, result_queue, worker_idx):
     while True:
         pidx, program = task_queue.get()
-        print(f"Worked {worker_idx} testing program {pidx}")
+        print(f"Worked {worker_idx} testing program {pidx}. Queue size: {task_queue.qsize()}")
         Model = run_code_and_get_class(strip_ticks(program))
         score, n_examples, n_epochs = compute_accuracy(Model, args)
         result_queue.put((pidx, score, n_examples, n_epochs))

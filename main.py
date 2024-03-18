@@ -1,5 +1,7 @@
 # import queue
+import datetime
 from multiprocessing import Queue
+from pathlib import Path
 import queue
 import select
 import threading
@@ -38,6 +40,10 @@ def main():
     # lm = dspy.OpenAI(model="gpt-3.5-turbo", max_tokens=4000)
     dspy.settings.configure(lm=lm)
 
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_folder = Path(f"best_programs_{current_time}")
+    output_folder.mkdir(parents=True, exist_ok=True)
+
     model_queue = Queue()
     demo_queues = [Queue() for _ in range(args.num_producers)]
     task_queue = Queue()
@@ -58,29 +64,12 @@ def main():
 
     producer_threads = []
     for i, personality in zip(range(args.num_producers), personalities):
-        t = threading.Thread(
-            target=model_producer,
-            args=(
-                args,
-                personality,
-                model_queue,
-                demo_queues[i],
-                i,
-            ),
-        )
+        t = threading.Thread(target=model_producer, args=(args, personality, model_queue, demo_queues[i], i))
         producer_threads.append(t)
         t.start()
     tester_threads = []
     for i in range(args.num_testers):
-        t = threading.Thread(
-            target=model_tester,
-            args=(
-                args,
-                task_queue,
-                result_queue,
-                i,
-            ),
-        )
+        t = threading.Thread(target=model_tester, args=(args, task_queue, result_queue, i))
         tester_threads.append(t)
         t.start()
 
@@ -92,6 +81,8 @@ def main():
         print("Waiting for workers...")
         select.select([model_queue._reader, result_queue._reader], [], [])
 
+        # All processing in this loop is fast and non-blocking. The blocking / hard work
+        # happens in the workers.
         for input_queue in [model_queue, result_queue]:
             try:
                 value = input_queue.get(block=False)
@@ -99,35 +90,10 @@ def main():
                 continue
 
             if input_queue is model_queue:
-                program, analysis = value
-                print("Anlysis:", analysis)
-                pidx = len(programs)
-                print(f"Program ({pidx}):", program)
-                task_queue.put((pidx, program))
-                programs.append(value)
+                model_queue_handler(task_queue, programs, value)
 
             elif input_queue is result_queue:
-                pidx, score, n_examples, n_epochs = value
-                program, analysis = programs[pidx]
-                Model = run_code_and_get_class(strip_ticks(program))
-                print(f"Tested Program {pidx}")
-                actual_scores.append(score)
-                print(f"Actual score: {score:.2f}")
-                print(actual_scores)
-                speed = n_examples / args.train_time
-                speed_text = f"Speed: {speed:.2f} examples per second. Completed {n_epochs:.2f} epochs."
-                print(speed_text)
-                total_params, _ = get_model_parameters(Model())
-                print("Total parameters:", total_params)
-                example = dspy.Example(
-                    program=program,
-                    analysis=analysis[:100] + "...",
-                    score=score,
-                    explanation=f"Model with {total_params} parameters. {speed_text}",
-                )
-                examples.append(example)
-                for demo_queue in demo_queues:
-                    demo_queue.put((pidx, example))
+                result_queue_handler(output_folder, demo_queues, programs, examples, actual_scores, value)
 
     lm.inspect_history(n=2)
 
@@ -142,6 +108,46 @@ def main():
 
         plt.plot(actual_scores)
         plt.show()
+
+
+def result_queue_handler(output_folder, demo_queues, programs, examples, actual_scores, value):
+    pidx, score, n_examples, n_epochs = value
+    program, analysis = programs[pidx]
+    Model = run_code_and_get_class(strip_ticks(program))
+    print(f"Tested Program {pidx}")
+    actual_scores.append(score)
+    print(f"Actual score: {score:.2f}")
+    print(actual_scores)
+    speed = n_examples / args.train_time
+    speed_text = f"Speed: {speed:.2f} examples per second. Completed {n_epochs:.2f} epochs."
+    print(speed_text)
+    total_params, _ = get_model_parameters(Model())
+    print("Total parameters:", total_params)
+    example = dspy.Example(
+        program=program,
+        analysis=analysis[:100] + "...",
+        score=score,
+        explanation=f"Accuracy: {score:.2f}. Model with {total_params} parameters. {speed_text}",
+    )
+    examples.append(example)
+    for demo_queue in demo_queues:
+        demo_queue.put((pidx, example))
+
+    # Save the program, analysis, and score to a text file
+    file_path = output_folder / f"{pidx}_{score:.2f}.txt"
+    with file_path.open("w") as f:
+        f.write(f"Score: {score:.2f}\n\n")
+        f.write(f"Analysis:\n{analysis}\n\n")
+        f.write(f"Program:\n{program}\n")
+
+
+def model_queue_handler(task_queue, programs, value):
+    program, analysis = value
+    print("Anlysis:", analysis)
+    pidx = len(programs)
+    print(f"Program ({pidx}):", program)
+    task_queue.put((pidx, program))
+    programs.append(value)
 
 
 if __name__ == "__main__":
