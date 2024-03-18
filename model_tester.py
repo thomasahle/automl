@@ -56,7 +56,6 @@ def compute_accuracy(model_class: str, args, test_run=False):
                 enable_progress_bar=False,
                 enable_model_summary=False,
                 enable_checkpointing=False,
-                log_level="WARNING",
                 accelerator="cpu",
                 devices=1,
             )

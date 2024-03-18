@@ -136,9 +136,11 @@ def result_queue_handler(output_folder, demo_queues, programs, examples, actual_
     # Save the program, analysis, and score to a text file
     file_path = output_folder / f"{pidx}_{score:.3f}.txt"
     with file_path.open("w") as f:
-        f.write(f"Score: {score:.6f}\n\n")
-        f.write(f"Analysis:\n{analysis}\n\n")
-        f.write(f"Program:\n{program}\n")
+        print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
+        print(f"Score: {score:.6f}\n", file=f)
+        print(speed_text, file=f)
+        print(f"Analysis:\n{analysis}\n", file=f)
+        print(f"Program:\n{program}", file=f)
 
 
 def model_queue_handler(task_queue, programs, value):
