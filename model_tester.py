@@ -3,7 +3,7 @@ from torchvision import transforms
 from datetime import timedelta
 import torch.nn.functional as F
 
-from data import DataModule
+from data import DataModule, MemoryDataModule
 
 
 # We define the test-step outside of the MNISTModel, so the LM can't cheat
@@ -68,8 +68,11 @@ def compute_accuracy(model_class: str, args, test_run=False):
         model = model_class()
     batch_size = getattr(model, "batch_size", 64)
     transform = getattr(model, "transform", transforms.Compose([transforms.ToTensor()]))
-    data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
+    # data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
+    data_module = MemoryDataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset)
     try:
+        data_module.prepare_data()
+        data_module.setup()
         if test_run:
             # We don't wrap this in a try-except block, because we want to see the error
             trainer.fit(model, datamodule=data_module)
