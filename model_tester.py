@@ -135,7 +135,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             callbacks=[batch_counter],
             enable_checkpointing=False,
             enable_model_summary=True,
-            precision="bf16-mixed",
+            # precision="bf16-mixed",
         )
 
     # This initializes the model directly on gpu
