@@ -82,8 +82,8 @@ def make_signatures(args, personality):
         {personality}
         """)
 
-        # score: float = dspy.InputField(desc="The accuracy the model should get")
-        score: float = dspy.OutputField(desc="The accuracy the model should get")
+        score: float = dspy.InputField(desc="The accuracy the model should get")
+        # score: float = dspy.OutputField(desc="The accuracy the model should get")
         analysis: str = dspy.OutputField(
             desc="Short analysis of what the previous models did that worked well or didn't work well. How can you improve on them? Answer in plain text, no Markdown"
         )
@@ -179,8 +179,8 @@ def model_producer(
         target_score = (max(demo.score for demo in demos.values()) + 1) / 2
         print(f"Making program from {worker_idx}...")
         try:
-            # pred = proposer(score=target_score)
-            pred = proposer()
+            pred = proposer(score=target_score)
+            # pred = proposer()
         except ValueError as e:
             dspy.settings.lm.inspect_history(n=1)
             print(f"Worked {worker_idx} failed: {e}")
