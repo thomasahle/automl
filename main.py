@@ -29,6 +29,11 @@ parser.add_argument("--from-scratch", action="store_true", help="Whether to crea
 parser.add_argument("--max-retries", type=int, default=10)
 parser.add_argument("--class-name", type=str, default="ImageModel")
 parser.add_argument("--max-params", type=int, default=10**7)
+parser.add_argument(
+    "--best-first",
+    action="store_true",
+    help="If set, the best programs will be at the top of the prompt. Otherwise, they will be at the bottom.",
+)
 args = parser.parse_args()
 
 

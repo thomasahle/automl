@@ -170,6 +170,10 @@ def model_producer(
             demos[pidx] = demo
             continue
 
+        # Flip to keep the best at the bottom
+        if not args.best_first:
+            subset = subset[::-1]
+
         proposer.predictor.demos = [demo for i, demo in subset]
         target_score = (max(demo.score for demo in demos.values()) + 1) / 2
         print(f"Making program from {worker_idx}...")
