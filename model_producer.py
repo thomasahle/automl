@@ -16,10 +16,10 @@ def get_model_parameters(model):
     return total_params, trainable_params
 
 
-def MySignature(args, personality):
+def make_signatures(args, personality):
     class BaseSignature(dspy.Signature):
         program: str = dspy.OutputField(
-            desc="A python lightning class, called ImageModel, you can include imports, but no other code."
+            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
         )
 
         @pydantic.field_validator("program")
@@ -32,8 +32,8 @@ def MySignature(args, personality):
                     raise ValueError(f"Don't write any code besides the class. You wrote {repr(line)}")
             if "torchvision.models" in v:
                 raise ValueError("Don't import torchvision.models")
-            if "class ImageModel" not in v:
-                raise ValueError("You must define one class named ImageModel")
+            if f"class {args.class_name}" not in v:
+                raise ValueError(f"You must define one class named {args.class_name}")
             if "self.batch_size" not in v or "self.transform" not in v:
                 raise ValueError(
                     "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
@@ -42,11 +42,11 @@ def MySignature(args, personality):
                 # Attempt to compile the code snippet
                 compile(v, "<string>", "exec")
                 # Attempt to run the code snippet
-                Model = model_tester.run_code_and_get_class(v)
+                Model = model_tester.run_code_and_get_class(v, args.class_name)
                 total_params, _ = get_model_parameters(Model())
-                if total_params > 10**7:
-                    raise ValueError(f"You used {total_params} parameters. Please keep it under 1,000,000")
-                _ = model_tester.compute_accuracy(Model, args, test_run=True)
+                if total_params > args.max_params:
+                    raise ValueError(f"You used {total_params:,} parameters. Please keep it under {args.max_params:,}")
+                _ = model_tester.compute_accuracy(v, args, test_run=True)
             except Exception as e:
                 raise ValueError(f"Code did not run: {e}")
             return v
@@ -109,7 +109,7 @@ def model_producer(
 ) -> None:
     make_initial = worker_idx == 0
 
-    ImproveSignature, InitialSignature = MySignature(args, personality)
+    ImproveSignature, InitialSignature = make_signatures(args, personality)
     proposer = dspy.TypedPredictor(ImproveSignature, explain_errors=True, max_retries=args.max_retries)
 
     used_demo_subsets = set()

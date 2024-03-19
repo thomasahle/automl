@@ -27,6 +27,8 @@ parser.add_argument("--max-examples", type=int, default=30)
 parser.add_argument("--plot", action="store_true")
 parser.add_argument("--from-scratch", action="store_true", help="Whether to create the initial model from scratch.")
 parser.add_argument("--max-retries", type=int, default=10)
+parser.add_argument("--class-name", type=str, default="ImageModel")
+parser.add_argument("--max-params", type=int, default=10**7)
 args = parser.parse_args()
 
 
@@ -125,7 +127,6 @@ def get_queue_size(queue):
 def result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value):
     pidx, score, n_examples, n_epochs = value
     program, analysis = programs[pidx]
-    Model = run_code_and_get_class(strip_ticks(program))
     print(f"Tested Program {pidx}")
     actual_scores.append(score)
     print(f"Actual score: {score:.3f}")
@@ -133,13 +134,14 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     speed = n_examples / args.train_time
     speed_text = f"Speed: {speed:.3f} examples per second. Completed {n_epochs:.3f} epochs."
     print(speed_text)
+    Model = run_code_and_get_class(strip_ticks(program), args.class_name)
     total_params, _ = get_model_parameters(Model())
-    print("Total parameters:", total_params)
+    print(f"Total parameters: {total_params:,}")
     example = dspy.Example(
         program=program,
         analysis=analysis[:100] + "...",
         score=score,
-        explanation=f"Accuracy: {score:.3f}. Model with {total_params} parameters. {speed_text}",
+        explanation=f"Accuracy: {score:.3f}. Model with {total_params:,} parameters. {speed_text}",
     )
     examples.append(example)
     for demo_queue in demo_queues:
