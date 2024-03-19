@@ -1,27 +1,38 @@
+import logging
 import multiprocessing
 import resource
 import time
+import traceback
 import pytorch_lightning as pl
 from torchvision import transforms
 from datetime import timedelta
 import torch.nn.functional as F
 from argparse import Namespace
+from pytorch_lightning.utilities.rank_zero import rank_zero_module
 
 from data import DataModule
+
+
+class ExceptionInfo:
+    def __init__(self, exc):
+        self.exc = exc
+        self.traceback = traceback.format_exc()
+
+    def re_raise(self):
+        print(self.traceback)
+        raise self.exc
 
 
 # Computes the accuracy of the model in a separate process, with resource limits
 def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_bytes=2**25):
     result_queue = multiprocessing.Queue()
+    assert isinstance(code, str)
 
     # Create a new process to run the compute_accuracy function with resource limits
     p = multiprocessing.Process(
         target=compute_accuracy_worker,
         args=(code, args, result_queue, memory_limit_bytes, test_run),
     )
-
-    # Set the process as a daemon to ensure it terminates when the main process exits
-    p.daemon = True
 
     p.start()
 
@@ -32,13 +43,11 @@ def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_by
         # If the process is still alive after time_limit_sec, terminate it
         p.terminate()
         p.join()
-        # raise TimeoutError("The process exceeded the time limit and was terminated.")
 
     if not result_queue.empty():
         result = result_queue.get()
-        if isinstance(result, Exception):
-            # If the result is an exception, raise it
-            raise result
+        if isinstance(result, ExceptionInfo):
+            result.re_raise()
         return result
     else:
         print("Warning: The process did not return any result.")
@@ -79,12 +88,16 @@ def compute_accuracy_worker(
     try:
         result = compute_accuracy_inner(code, args, test_run)
     except Exception as e:
-        result = e
+        result = ExceptionInfo(e)
     result_queue.put(result)
 
 
 def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     Model = run_code_and_get_class(strip_ticks(code), args.class_name)
+    logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+    # rank_zero_module.log.setLevel(logging.ERROR)
+    # for name in logging.root.manager.loggerDict:
+    #    print("logger:", logging.getLogger(name))
 
     if test_run:
         trainer = pl.Trainer(
@@ -94,6 +107,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             enable_checkpointing=False,
             accelerator="cpu",
             devices=1,
+            # strategy="ddp_spawn",
         )
     else:
         # For counting the number of batches we train on
@@ -112,6 +126,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             devices=1 if args.accelerator == "cpu" else args.devices,
             callbacks=[batch_counter],  # Register the callback
             enable_checkpointing=False,
+            # strategy="ddp_spawn",
         )
 
     # This initializes the model directly on gpu
