@@ -9,12 +9,16 @@ def plot_scores_from_files(folder_path):
     scores = []
 
     for file_path in folder_path.glob("*.txt"):
+        pidx, _ = file_path.name.split("_")
         with file_path.open("r") as f:
             content = f.read()
             score_match = re.search(r"Score: (\d+\.\d+)", content)
             if score_match:
                 score = float(score_match.group(1))
-                scores.append(score)
+                scores.append((int(pidx), score))
+
+    scores.sort()
+    scores = [score for _, score in scores]
 
     if scores:
         sns.set_style("darkgrid")
@@ -22,7 +26,7 @@ def plot_scores_from_files(folder_path):
         sns.lineplot(x=range(len(scores)), y=scores, marker="o", markersize=8, linewidth=2, color="#1f77b4")
         plt.xlabel("Program Index", fontsize=14)
         plt.ylabel("Accuracy", fontsize=14)
-        plt.title("Automatic Program Generation for CIFAR-10", fontsize=18)
+        plt.title("Automatic Program Generation for CIFAR-10. Accuracy after 20s training.", fontsize=18)
         plt.xticks(fontsize=12)
         plt.yticks(fontsize=12)
         plt.xlim(-0.5, len(scores) - 0.5)
