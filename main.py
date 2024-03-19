@@ -142,15 +142,18 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     Model = run_code_and_get_class(strip_ticks(program), args.class_name)
     total_params, _ = get_model_parameters(Model())
     print(f"Total parameters: {total_params:,}")
-    example = dspy.Example(
-        program=program,
-        analysis=analysis[:100] + "...",
-        score=score,
-        explanation=f"Accuracy: {score:.3f}. Model with {total_params:,} parameters. {speed_text}",
-    )
-    examples.append(example)
-    for demo_queue in demo_queues:
-        demo_queue.put((pidx, example, get_queue_size(task_queue)))
+    if score > 0:
+        example = dspy.Example(
+            program=program,
+            analysis=analysis[:100] + "...",
+            score=score,
+            explanation=f"Accuracy: {score:.3f}. Model with {total_params:,} parameters. {speed_text}",
+        )
+        examples.append(example)
+        for demo_queue in demo_queues:
+            demo_queue.put((pidx, example, get_queue_size(task_queue)))
+    else:
+        print(f"Program {pidx} failed, so not adding to the demo queue.")
 
     # Save the program, analysis, and score to a text file
     file_path = output_folder / f"{pidx}_{score:.3f}.txt"
