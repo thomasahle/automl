@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
-import resource
+import os
+import sys
 import time
 import traceback
 import pytorch_lightning as pl
@@ -8,7 +9,6 @@ from torchvision import transforms
 from datetime import timedelta
 import torch.nn.functional as F
 from argparse import Namespace
-from pytorch_lightning.utilities.rank_zero import rank_zero_module
 
 from data import DataModule
 
@@ -18,8 +18,9 @@ class ExceptionInfo:
         self.exc = exc
         self.traceback = traceback.format_exc()
 
-    def re_raise(self):
-        print(self.traceback)
+    def re_raise(self, verbose=True):
+        if verbose:
+            print(self.traceback)
         raise self.exc
 
 
@@ -47,7 +48,10 @@ def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_by
     if not result_queue.empty():
         result = result_queue.get()
         if isinstance(result, ExceptionInfo):
-            result.re_raise()
+            if test_run:
+                result.re_raise(verbose=False)
+            print(f"Warning: The process failed with excetion {result}.")
+            return 0, 0, 0
         return result
     else:
         print("Warning: The process did not return any result.")
@@ -96,9 +100,9 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     Model = run_code_and_get_class(strip_ticks(code), args.class_name)
     logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
     logging.getLogger("tensorflow").setLevel(logging.WARNING)
-    # rank_zero_module.log.setLevel(logging.ERROR)
-    # for name in logging.root.manager.loggerDict:
-    #    print("logger:", logging.getLogger(name))
+    if test_run:
+        sys.stderr = open(os.devnull, "w")
+        sys.stdout = open(os.devnull, "w")
 
     if test_run:
         trainer = pl.Trainer(
@@ -108,7 +112,6 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             enable_checkpointing=False,
             accelerator="cpu",
             devices=1,
-            # strategy="ddp_spawn",
         )
     else:
         # For counting the number of batches we train on
@@ -125,9 +128,10 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             max_time=timedelta(seconds=args.train_time),
             accelerator=args.accelerator,
             devices=1 if args.accelerator == "cpu" else args.devices,
-            callbacks=[batch_counter],  # Register the callback
+            callbacks=[batch_counter],
             enable_checkpointing=False,
-            # strategy="ddp_spawn",
+            enable_model_summary=True,
+            precision="bf16",
         )
 
     # This initializes the model directly on gpu
@@ -173,6 +177,6 @@ def model_tester(args, task_queue, result_queue, worker_idx):
             qsize = task_queue.qsize()
         except NotImplementedError:
             qsize = -1  # Not implemented on MacOS
-        print(f"Worked {worker_idx} testing program {pidx}. Queue size: {qsize}")
+        print(f"Worker {worker_idx} testing program {pidx}. Queue size: {qsize}")
         score, n_examples, n_epochs = compute_accuracy(program, args)
         result_queue.put((pidx, score, n_examples, n_epochs))
