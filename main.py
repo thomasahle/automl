@@ -39,6 +39,13 @@ args = parser.parse_args()
 
 torch.set_float32_matmul_precision("medium")
 
+personalities = [
+    "Focus on exploitation: Make small changes to the hyper parameters of the best previous models to make them even better.",
+    "Focus on exploration: Try out completely new approaches, that generate new knowledge. Don't be afraid to fail.",
+    "Focus on speed: Make the model run faster, but don't sacrifice accuracy.",
+    "Balance exploitation and exploration: Try out new approaches, but also make small changes to the best previous models.",
+]
+
 
 def main():
     random.seed(42)
@@ -57,18 +64,14 @@ def main():
     task_queue = Queue()
     result_queue = Queue()
 
-    personalities = [
-        "Focus on exploitation: Make small changes to the hyper parameters of the best previous models to make them even better.",
-        "Focus on exploration: Try out completely new approaches, that generate new knowledge. Don't be afraid to fail.",
-        "Focus on speed: Make the model run faster, but don't sacrifice accuracy.",
-        "Balance exploitation and exploration: Try out new approaches, but also make small changes to the best previous models.",
-    ]
     if len(personalities) < args.num_producers:
         min_length = args.num_producers - len(personalities)
-        personalities += dspy.TypedPredictor(
-            f"personalities:list[str] -> more_personalities:Annotated[list[str], Field(min_length={min_length})]",
-            f"Think of {min_length} more personalities.",
-        )(personalities).more_personalities
+        personalities.extend(
+            dspy.TypedPredictor(
+                f"personalities:list[str] -> more_personalities:Annotated[list[str], Field(min_length={min_length})]",
+                f"Think of {min_length} more personalities.",
+            )(personalities).more_personalities
+        )
 
     producer_threads = []
     for i, personality in zip(range(args.num_producers), personalities):
@@ -130,8 +133,9 @@ def get_queue_size(queue):
 
 
 def result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value):
-    pidx, score, n_examples, n_epochs = value
-    program, analysis = programs[pidx]
+    pidx, widx, score, n_examples, n_epochs = value
+    widx2, program, analysis = programs[pidx]
+    assert widx == widx2
     print(f"Tested Program {pidx}")
     actual_scores.append(score)
     print(f"Actual score: {score:.3f}")
@@ -165,16 +169,17 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
         print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
         print(f"Score: {score:.6f}\n", file=f)
         print(explanation, file=f)
+        print(f"Personalitity: {personalities[widx]}", file=f)
         print(f"Analysis:\n{analysis}\n", file=f)
         print(f"Program:\n{program}", file=f)
 
 
 def model_queue_handler(task_queue, programs, value):
-    program, _analysis = value
+    widx, program, _analysis = value
     # print("Anlysis:", analysis)
     pidx = len(programs)
     # print(f"Program ({pidx}):", program)
-    task_queue.put((pidx, program))
+    task_queue.put((pidx, widx, program))
     programs.append(value)
     print(f"Added new program to queue. Queue size: {get_queue_size(task_queue)}")
 

@@ -149,7 +149,7 @@ def model_producer(
                         program = default_progs.cifar
                     else:
                         raise ValueError(f"Unsupported dataset: {args.dataset}")
-                model_queue.put((program, "Baseline model."))
+                model_queue.put((worker_idx, program, "Baseline model."))
                 make_initial = False
                 continue
 
@@ -186,5 +186,5 @@ def model_producer(
             print(f"Worked {worker_idx} failed: {e}")
             continue
         print(f"Success! {worker_idx}")
-        model_queue.put((pred.program, pred.analysis))
+        model_queue.put((worker_idx, pred.program, pred.analysis))
     print("Model producer stopped.")

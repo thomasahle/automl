@@ -176,12 +176,12 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
 
 def model_tester(args, task_queue, result_queue, worker_idx):
     while True:
-        pidx, program = task_queue.get()
+        pidx, widx, program = task_queue.get()
         try:
             qsize = task_queue.qsize()
         except NotImplementedError:
             qsize = -1  # Not implemented on MacOS
         print(f"Worker {worker_idx} testing program {pidx}. Queue size: {qsize}")
         score, n_examples, n_epochs = compute_accuracy(program, args)
-        result_queue.put((pidx, score, n_examples, n_epochs))
+        result_queue.put((pidx, widx, score, n_examples, n_epochs))
     print("Model tester stopped.")
