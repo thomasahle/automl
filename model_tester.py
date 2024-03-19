@@ -104,6 +104,9 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
         sys.stderr = open(os.devnull, "w")
         sys.stdout = open(os.devnull, "w")
 
+    for logger in [logging.getLogger(name) for name in logging.root.manager.loggerDict]:
+        print(logger)
+
     if test_run:
         trainer = pl.Trainer(
             fast_dev_run=True,
@@ -131,7 +134,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             callbacks=[batch_counter],
             enable_checkpointing=False,
             enable_model_summary=True,
-            precision="bf16",
+            precision="bf16-mixed",
         )
 
     # This initializes the model directly on gpu
@@ -140,7 +143,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     batch_size = getattr(model, "batch_size", 64)
     transform = getattr(model, "transform", transforms.Compose([transforms.ToTensor()]))
 
-    print("Setting up data module")
+    print(f"Setting up data module {test_run=}")
     start = time.time()
     data_module = DataModule(batch_size=batch_size, transform=transform, dataset_name=args.dataset, test_run=test_run)
     try:
@@ -157,7 +160,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             model.test_step = lambda *args: test_step(model, *args)  # Attach test_step
             res = trainer.test(model, dataloaders=data_module.test_dataloader(), verbose=False)
         except Exception as e:
-            print(f"Warning: train/test gaveexception {e}.")
+            print(f"Warning: train/test gave exception {e}.")
             return 0, 0, 0
 
         n_examples = batch_counter.batch_count * batch_size
@@ -180,3 +183,4 @@ def model_tester(args, task_queue, result_queue, worker_idx):
         print(f"Worker {worker_idx} testing program {pidx}. Queue size: {qsize}")
         score, n_examples, n_epochs = compute_accuracy(program, args)
         result_queue.put((pidx, score, n_examples, n_epochs))
+    print("Model tester stopped.")

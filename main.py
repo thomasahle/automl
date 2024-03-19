@@ -136,18 +136,22 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     actual_scores.append(score)
     print(f"Actual score: {score:.3f}")
     print(actual_scores)
-    speed = n_examples / args.train_time
-    speed_text = f"Speed: {speed:.3f} examples per second. Completed {n_epochs:.3f} epochs."
-    print(speed_text)
     Model = run_code_and_get_class(strip_ticks(program), args.class_name)
     total_params, _ = get_model_parameters(Model())
-    print(f"Total parameters: {total_params:,}")
+    speed = n_examples / args.train_time
+    explanation = (
+        f"Accuracy: {score:.3f}. "
+        + f"Model with {total_params:,} parameters. "
+        + f"Speed: {speed:.3f} examples per second. "
+        + f"Completed {n_epochs:.3f} epochs."
+    )
+    print(explanation)
     if score > 0:
         example = dspy.Example(
             program=program,
             analysis=analysis[:100] + "...",
             score=score,
-            explanation=f"Accuracy: {score:.3f}. Model with {total_params:,} parameters. {speed_text}",
+            explanation=explanation,
         )
         examples.append(example)
         for demo_queue in demo_queues:
@@ -160,7 +164,7 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     with file_path.open("w") as f:
         print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
         print(f"Score: {score:.6f}\n", file=f)
-        print(speed_text, file=f)
+        print(explanation, file=f)
         print(f"Analysis:\n{analysis}\n", file=f)
         print(f"Program:\n{program}", file=f)
 
