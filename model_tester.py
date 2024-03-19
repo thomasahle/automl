@@ -135,6 +135,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             callbacks=[batch_counter],
             enable_checkpointing=False,
             enable_model_summary=True,
+            # 16-bit precision, mixed precision actually makes accuracy a lot worse
             # precision="bf16-mixed",
         )
 

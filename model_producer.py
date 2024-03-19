@@ -94,6 +94,8 @@ def make_signatures(args, personality):
             # Sometimes the model invents its own score. Remove that.
             return re.sub("Score: [\d\.]+", "", s)
 
+    print(f"Signature: {ImproveSignature}")
+
     class InitialSignature(BaseSignature):
         f"""Write a simple python class for training a model for {args.dataset}. Use the template: ```python\n{template}\n```"""
         pass
