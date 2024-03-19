@@ -23,6 +23,9 @@ class ExceptionInfo:
             print(self.traceback)
         raise self.exc
 
+    def __str__(self):
+        return str(self.exc)
+
 
 # Computes the accuracy of the model in a separate process, with resource limits
 def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_bytes=2**25):
@@ -49,7 +52,9 @@ def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_by
         result = result_queue.get()
         if isinstance(result, ExceptionInfo):
             if test_run:
-                result.re_raise(verbose=False)
+                result.re_raise(verbose=args.verbose)
+            if args.verbose:
+                print(result.traceback)
             print(f"Warning: The process failed with excetion {result}.")
             return 0, 0, 0
         return result
@@ -98,15 +103,15 @@ def compute_accuracy_worker(
 
 def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     Model = run_code_and_get_class(strip_ticks(code), args.class_name)
-    logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
-    logging.getLogger("tensorflow").setLevel(logging.WARNING)
-    if test_run:
-        sys.stderr = open(os.devnull, "w")
-        sys.stdout = open(os.devnull, "w")
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # This hides the CPU instruction set warnings (and info messages)
-
-    # for logger in [logging.getLogger(name) for name in logging.root.manager.loggerDict]:
-    #    print(logger)
+    if not args.verbose:
+        logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+        logging.getLogger("tensorflow").setLevel(logging.WARNING)
+        if test_run:
+            sys.stderr = open(os.devnull, "w")
+            sys.stdout = open(os.devnull, "w")
+        os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # This hides the CPU instruction set warnings (and info messages)
+        # for logger in [logging.getLogger(name) for name in logging.root.manager.loggerDict]:
+        #    print(logger)
 
     if test_run:
         trainer = pl.Trainer(

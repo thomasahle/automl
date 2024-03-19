@@ -24,7 +24,7 @@ parser.add_argument("--accelerator", type=str, default="cpu")
 parser.add_argument("--num-producers", type=int, default=2)
 parser.add_argument("--num-testers", type=int, default=1)
 parser.add_argument("--max-examples", type=int, default=30)
-parser.add_argument("--plot", action="store_true")
+parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--from-scratch", action="store_true", help="Whether to create the initial model from scratch.")
 parser.add_argument("--max-retries", type=int, default=10)
 parser.add_argument("--class-name", type=str, default="ImageModel")
@@ -117,12 +117,6 @@ def main():
             print(demo.program)
             break
 
-    if args.plot:
-        import matplotlib.pyplot as plt
-
-        plt.plot(actual_scores)
-        plt.show()
-
 
 def get_queue_size(queue):
     try:
@@ -134,8 +128,9 @@ def get_queue_size(queue):
 
 def result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value):
     pidx, widx, score, n_examples, n_epochs = value
-    widx2, program, analysis = programs[pidx]
-    assert widx == widx2
+    _widx, pred = programs[pidx]
+    program = pred.program
+    analysis = pred.analysis
     print(f"Tested Program {pidx}")
     actual_scores.append(score)
     print(f"Actual score: {score:.3f}")
@@ -175,7 +170,8 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
 
 
 def model_queue_handler(task_queue, programs, value):
-    widx, program, _analysis = value
+    widx, pred = value
+    program = pred.program
     # print("Anlysis:", analysis)
     pidx = len(programs)
     # print(f"Program ({pidx}):", program)

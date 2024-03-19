@@ -16,42 +16,37 @@ def get_model_parameters(model):
     return total_params, trainable_params
 
 
-def make_signatures(args, personality):
-    class BaseSignature(dspy.Signature):
-        program: str = dspy.OutputField(
-            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
+def check_program(args, v):
+    v = model_tester.strip_ticks(v)
+    lines = v.split("\n")
+    allowed = ["import", "from", "class", " ", "#"]
+    for line in lines:
+        if line and not any(line.startswith(prefix) for prefix in allowed):
+            raise ValueError(f"Don't write any code besides the class. You wrote {repr(line)}")
+    if "torchvision.models" in v:
+        raise ValueError("Don't import torchvision.models")
+    if f"class {args.class_name}" not in v:
+        raise ValueError(f"You must define one class named {args.class_name}")
+    if "self.batch_size" not in v or "self.transform" not in v:
+        raise ValueError(
+            "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
         )
+    try:
+        # Attempt to compile the code snippet
+        compile(v, "<string>", "exec")
+        # Attempt to run the code snippet
+        Model = model_tester.run_code_and_get_class(v, args.class_name)
+        total_params, _ = get_model_parameters(Model())
+        if total_params > args.max_params:
+            raise ValueError(f"You used {total_params:,} parameters. Please keep it under {args.max_params:,}")
+        _ = model_tester.compute_accuracy(v, args, test_run=True)
+    except Exception as e:
+        raise ValueError(f"Code did not run: {e}")
+    return v
 
-        @pydantic.field_validator("program")
-        def check_syntax(cls, v):
-            v = model_tester.strip_ticks(v)
-            lines = v.split("\n")
-            allowed = ["import", "from", "class", " ", "#"]
-            for line in lines:
-                if line and not any(line.startswith(prefix) for prefix in allowed):
-                    raise ValueError(f"Don't write any code besides the class. You wrote {repr(line)}")
-            if "torchvision.models" in v:
-                raise ValueError("Don't import torchvision.models")
-            if f"class {args.class_name}" not in v:
-                raise ValueError(f"You must define one class named {args.class_name}")
-            if "self.batch_size" not in v or "self.transform" not in v:
-                raise ValueError(
-                    "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
-                )
-            try:
-                # Attempt to compile the code snippet
-                compile(v, "<string>", "exec")
-                # Attempt to run the code snippet
-                Model = model_tester.run_code_and_get_class(v, args.class_name)
-                total_params, _ = get_model_parameters(Model())
-                if total_params > args.max_params:
-                    raise ValueError(f"You used {total_params:,} parameters. Please keep it under {args.max_params:,}")
-                _ = model_tester.compute_accuracy(v, args, test_run=True)
-            except Exception as e:
-                raise ValueError(f"Code did not run: {e}")
-            return v
 
-    class ImproveSignature(BaseSignature):
+def make_signatures(args, personality):
+    class ImproveSignature(dspy.Signature):
         __doc__ = textwrap.dedent(f"""
         Write a new python lightning class to get the best score on {args.dataset} given
         {args.train_time} seconds training time. I will give you some examples, and you should
@@ -85,20 +80,34 @@ def make_signatures(args, personality):
         score: float = dspy.InputField(desc="The accuracy the model should get")
         # score: float = dspy.OutputField(desc="The accuracy the model should get")
         analysis: str = dspy.OutputField(
-            desc="Short analysis of what the previous models did that worked well or didn't work well. How can you improve on them? Answer in plain text, no Markdown"
+            desc="Short analysis of what the previous models did that worked well or didn't work well. Answer in plain text, no Markdown"
         )
-        explanation: str = dspy.OutputField(desc="Short explanation of what's different")
+        plan: str = dspy.OutputField(desc="Based on the analysis, how will you design your new program?")
+        program: str = dspy.OutputField(
+            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
+        )
+        explanation: str = dspy.OutputField(
+            desc="Short explanation of how the program is different from the previous ones."
+        )
+
+        @pydantic.field_validator("program")
+        def check_syntax(cls, v):
+            return check_program(args, v)
 
         @pydantic.field_validator("analysis")
         def check_for_score(cls, s):
             # Sometimes the model invents its own score. Remove that.
             return re.sub("Score: [\d\.]+", "", s)
 
-    print(f"Signature: {ImproveSignature}")
-
-    class InitialSignature(BaseSignature):
+    class InitialSignature(dspy.Signature):
         f"""Write a simple python class for training a model for {args.dataset}. Use the template: ```python\n{template}\n```"""
-        pass
+        program: str = dspy.OutputField(
+            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
+        )
+
+        @pydantic.field_validator("program")
+        def check_syntax(cls, v):
+            return check_program(args, v)
 
     return ImproveSignature, InitialSignature
 
@@ -151,7 +160,7 @@ def model_producer(
                         program = default_progs.cifar
                     else:
                         raise ValueError(f"Unsupported dataset: {args.dataset}")
-                model_queue.put((worker_idx, program, "Baseline model."))
+                model_queue.put((worker_idx, dspy.Example(program=program, analysis="Baseline model.")))
                 make_initial = False
                 continue
 
@@ -188,5 +197,5 @@ def model_producer(
             print(f"Worked {worker_idx} failed: {e}")
             continue
         print(f"Success! {worker_idx}")
-        model_queue.put((worker_idx, pred.program, pred.analysis))
+        model_queue.put((worker_idx, pred))
     print("Model producer stopped.")
