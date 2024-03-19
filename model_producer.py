@@ -97,6 +97,7 @@ def make_signatures(args, personality):
         # Sometimes the model invents its own score. Remove that.
         @pydantic.field_validator("analysis", "plan", "explanation")
         def check_for_score(cls, s):
+            # Actually this doesn't do anything right now in dspy
             return re.sub("Score: [\d\.]+", "", s)
 
     class InitialSignature(dspy.Signature):

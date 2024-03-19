@@ -3,6 +3,7 @@ import datetime
 from multiprocessing import Queue
 from pathlib import Path
 import queue
+import re
 import select
 import threading
 import dspy
@@ -148,7 +149,7 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     if score > 0:
         example = dspy.Example(
             program=program,
-            analysis=analysis[:300],
+            analysis=re.sub("Score: [\d\.]+", "", analysis[:300]),
             plan=pred.plan[:300],
             score=score,
             explanation=explanation,
