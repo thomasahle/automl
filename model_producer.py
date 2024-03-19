@@ -197,5 +197,5 @@ def model_producer(
             print(f"Worked {worker_idx} failed: {e}")
             continue
         print(f"Success! {worker_idx}")
-        model_queue.put((worker_idx, pred))
+        model_queue.put((worker_idx, dspy.Example(**pred)))
     print("Model producer stopped.")
