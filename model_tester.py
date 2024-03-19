@@ -103,9 +103,10 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     if test_run:
         sys.stderr = open(os.devnull, "w")
         sys.stdout = open(os.devnull, "w")
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # This hides the CPU instruction set warnings (and info messages)
 
-    for logger in [logging.getLogger(name) for name in logging.root.manager.loggerDict]:
-        print(logger)
+    # for logger in [logging.getLogger(name) for name in logging.root.manager.loggerDict]:
+    #    print(logger)
 
     if test_run:
         trainer = pl.Trainer(
