@@ -152,8 +152,7 @@ def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
             model.test_step = lambda *args: test_step(model, *args)  # Attach test_step
             res = trainer.test(model, dataloaders=data_module.test_dataloader(), verbose=False)
         except Exception as e:
-            print(f"Warning: Got exception {e}")
-            raise e
+            print(f"Warning: train/test gaveexception {e}.")
             return 0, 0, 0
 
         n_examples = batch_counter.batch_count * batch_size
