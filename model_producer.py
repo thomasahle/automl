@@ -160,7 +160,17 @@ def model_producer(
                         program = default_progs.cifar
                     else:
                         raise ValueError(f"Unsupported dataset: {args.dataset}")
-                model_queue.put((worker_idx, dspy.Example(program=program, analysis="Baseline model.")))
+                model_queue.put(
+                    (
+                        worker_idx,
+                        dspy.Example(
+                            analysis="No previous models to analyze",
+                            plan="Use a simple model to get a baseline accuracy.",
+                            program=program,
+                            explanation="This is the first model.",
+                        ),
+                    )
+                )
                 make_initial = False
                 continue
 
