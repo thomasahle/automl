@@ -95,6 +95,7 @@ def compute_accuracy_worker(
 def compute_accuracy_inner(code: str, args: Namespace, test_run=False):
     Model = run_code_and_get_class(strip_ticks(code), args.class_name)
     logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+    logging.getLogger("tensorflow").setLevel(logging.WARNING)
     # rank_zero_module.log.setLevel(logging.ERROR)
     # for name in logging.root.manager.loggerDict:
     #    print("logger:", logging.getLogger(name))
