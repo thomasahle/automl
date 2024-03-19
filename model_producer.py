@@ -94,9 +94,9 @@ def make_signatures(args, personality):
         def check_syntax(cls, v):
             return check_program(args, v)
 
-        @pydantic.field_validator("analysis")
+        # Sometimes the model invents its own score. Remove that.
+        @pydantic.field_validator("analysis", "plan", "explanation")
         def check_for_score(cls, s):
-            # Sometimes the model invents its own score. Remove that.
             return re.sub("Score: [\d\.]+", "", s)
 
     class InitialSignature(dspy.Signature):

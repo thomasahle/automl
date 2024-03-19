@@ -148,7 +148,8 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     if score > 0:
         example = dspy.Example(
             program=program,
-            analysis=analysis[:100] + "...",
+            analysis=analysis[:300],
+            plan=pred.plan[:300],
             score=score,
             explanation=explanation,
         )
@@ -166,7 +167,9 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
         print(explanation, file=f)
         print(f"Personalitity: {personalities[widx]}", file=f)
         print(f"Analysis:\n{analysis}\n", file=f)
+        print(f"Plan:\n{pred.plan}\n", file=f)
         print(f"Program:\n{program}", file=f)
+        print(f"Explanation:\n{pred.explanation}\n", file=f)
 
 
 def model_queue_handler(task_queue, programs, value):
