@@ -80,9 +80,10 @@ def make_signatures(args, personality):
         score: float = dspy.InputField(desc="The accuracy the model should get")
         # score: float = dspy.OutputField(desc="The accuracy the model should get")
         analysis: str = dspy.OutputField(
-            desc="Short analysis of what the previous models did that worked well or didn't work well. Answer in plain text, no Markdown"
+            desc="Short analysis of what the previous models did that worked well or didn't work well. "
+            + "Answer in plain text, no Markdown."
         )
-        plan: str = dspy.OutputField(desc="Based on the analysis, how will you design your new program?")
+        # plan: str = dspy.OutputField(desc="Based on the analysis, how will you design your new program?")
         program: str = dspy.OutputField(
             desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
         )
@@ -95,7 +96,8 @@ def make_signatures(args, personality):
             return check_program(args, v)
 
         # Sometimes the model invents its own score. Remove that.
-        @pydantic.field_validator("analysis", "plan", "explanation")
+        # @pydantic.field_validator("analysis", "plan", "explanation")
+        @pydantic.field_validator("analysis", "explanation")
         def check_for_score(cls, s):
             # Actually this doesn't do anything right now in dspy
             return re.sub("Score: [\d\.]+", "", s)
@@ -166,7 +168,7 @@ def model_producer(
                         worker_idx,
                         dspy.Example(
                             analysis="No previous models to analyze",
-                            plan="Use a simple model to get a baseline accuracy.",
+                            # plan="Use a simple model to get a baseline accuracy.",
                             program=program,
                             explanation="This is the first model.",
                         ),
