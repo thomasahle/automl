@@ -131,7 +131,7 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     pidx, widx, score, n_examples, n_epochs = value
     _widx, pred = programs[pidx]
     program = pred.program
-    analysis = pred.analysis
+    analysis = re.sub("Score: [\d\.]+", "", pred.analysis)
     print(f"Tested Program {pidx}")
     actual_scores.append(score)
     print(f"Actual score: {score:.3f}")
@@ -149,7 +149,7 @@ def result_queue_handler(output_folder, demo_queues, task_queue, programs, examp
     if score > 0:
         example = dspy.Example(
             program=program,
-            analysis=re.sub("Score: [\d\.]+", "", analysis[:100]),
+            analysis=analysis[:100],
             # plan=pred.plan[:300],
             score=score,
             explanation=explanation,
