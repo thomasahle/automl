@@ -83,7 +83,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
-        self.net = self.net.half()
+        # self.net = self.net.half()
 
     def forward(self, x):
         return self.net(x)
@@ -198,9 +198,11 @@ def make_data(device):
     print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return (
-        train_inputs.half().to(device),
+        # train_inputs.half().to(device),
+        train_inputs.to(device),
         train_labels.to(device),
-        test_inputs.half().to(device),
+        # test_inputs.half().to(device),
+        test_inputs.to(device),
         test_labels.to(device),
     )
 
