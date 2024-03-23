@@ -232,19 +232,19 @@ def train(device, train_inputs, train_labels, time_limit):
 def make_data(device):
     transform = transforms.Compose(
         [
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomCrop(32, padding=4),
-            # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
         ]
     )
     trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
     testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
-    traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=False, num_workers=0)
+    traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=True, num_workers=0)
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     test_inputs, test_labels = next(iter(testdata))
     train_inputs, train_labels = [], []
-    for _ in range(1):
+    for _ in range(2):
         ti, tl = next(iter(traindata))
         train_inputs.append(ti)
         train_labels.append(tl)
