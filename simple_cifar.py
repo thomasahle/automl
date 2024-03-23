@@ -198,12 +198,6 @@ class KellerNet(nn.Module):
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: lr_schedule[i])
         return optimizer, scheduler, batch_size
 
-    def get_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=0.001)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-        batch_size = 256
-        return optimizer, scheduler, batch_size
-
 
 def train(model, train_inputs, train_labels, time_limit):
     criterion = nn.CrossEntropyLoss()
@@ -224,7 +218,7 @@ def train(model, train_inputs, train_labels, time_limit):
             if time.time() - start_time >= time_limit:
                 break
         scheduler.step()
-    return model, n_items
+    return n_items
 
 
 def make_data(device):
@@ -273,20 +267,20 @@ print(
     f"Loaded {len(train_inputs)} training and {len(test_inputs)} test examples in {time.time() - start_time:.2f} seconds"
 )
 
-# Train the model
+# net = Net().to(device)
+print("Creating model...")
+net = KellerNet().to(device)
+print("Compiling model...")
+# net = torch.compile(net)
 start_time = time.time()
 print("Start training...")
-
-# net = Net().to(device)
-net = KellerNet().to(device)
-net = torch.compile(net, mode="max-autotune")
-model, n_items = train(net, train_inputs, train_labels, time_limit=5)
+net, n_items = train(net, train_inputs, train_labels, time_limit=5)
 print(f"Trained in {time.time() - start_time:.2f} seconds, {n_items / len(train_inputs):.1f} epochs")
 
 # Evaluate on test set
-model.eval()
+net.eval()
 with torch.no_grad():
-    outputs = model(test_inputs)
+    outputs = net(test_inputs)
     _, predicted = torch.max(outputs.data, 1)
     total = test_labels.size(0)
     correct = (predicted == test_labels).sum().item()
