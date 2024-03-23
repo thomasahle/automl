@@ -26,8 +26,67 @@ class Net(nn.Module):
         return x
 
 
+class Flatten(nn.Module):
+    def forward(self, x):
+        return x.view(x.size(0), -1)
+
+
+class Mul(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        return x * self.scale
+
+
+def make_net():
+    act = nn.GELU
+    bn = lambda ch: nn.BatchNorm2d(ch)
+    conv = lambda ch_in, ch_out: nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
+
+    net = nn.Sequential(
+        nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
+        act(),
+        nn.Sequential(
+            conv(24, 64),
+            nn.MaxPool2d(2),
+            bn(64),
+            act(),
+            conv(64, 64),
+            bn(64),
+            act(),
+        ),
+        nn.Sequential(
+            conv(64, 256),
+            nn.MaxPool2d(2),
+            bn(256),
+            act(),
+            conv(256, 256),
+            bn(256),
+            act(),
+        ),
+        nn.Sequential(
+            conv(256, 256),
+            nn.MaxPool2d(2),
+            bn(256),
+            act(),
+            conv(256, 256),
+            bn(256),
+            act(),
+        ),
+        nn.MaxPool2d(3),
+        Flatten(),
+        nn.Linear(256, 10, bias=False),
+        Mul(1 / 9),
+    )
+    net[0].weight.requires_grad = False
+    return net
+
+
 def train(device, train_inputs, train_labels, time_limit):
-    model = Net().to(device)
+    # model = Net().to(device)
+    model = make_net().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
@@ -68,8 +127,8 @@ def make_data(device):
 
 
 # Set device (GPU if available, else CPU)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("mps")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("mps")
 
 # Make the data
 print("Loading data")
