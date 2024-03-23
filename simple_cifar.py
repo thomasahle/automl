@@ -233,8 +233,8 @@ def make_data(device):
     transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.RandomCrop(32, padding=4),
+            # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
         ]
     )
