@@ -226,7 +226,7 @@ def make_data(device):
         [
             transforms.RandomHorizontalFlip(),
             # transforms.RandomCrop(32, padding=4),
-            transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
+            # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
         ]
     )
@@ -264,7 +264,8 @@ print("Loading data")
 start_time = time.time()
 train_inputs, train_labels, test_inputs, test_labels = make_data(device)
 print(
-    f"Loaded {len(train_inputs)} training and {len(test_inputs)} test examples in {time.time() - start_time:.2f} seconds"
+    f"Loaded {len(train_inputs)} training and {len(test_inputs)} "
+    f"test examples in {time.time() - start_time:.2f} seconds"
 )
 
 # net = Net().to(device)
