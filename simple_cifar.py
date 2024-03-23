@@ -278,7 +278,7 @@ print(
 print("Creating model...")
 net = KellerNet().to(device)
 print("Compiling model...")
-# net = torch.compile(net)
+net = torch.compile(net)
 start_time = time.time()
 print("Start training...")
 n_items = train(net, train_inputs, train_labels, time_limit=5)
