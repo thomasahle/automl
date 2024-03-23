@@ -32,67 +32,102 @@ class Net(nn.Module):
         return optimizer, scheduler, batch_size
 
 
-class Flatten(nn.Module):
+class KellerNet(nn.Module):
+    class Flatten(nn.Module):
+        def forward(self, x):
+            return x.view(x.size(0), -1)
+
+    class Mul(nn.Module):
+        def __init__(self, scale):
+            super().__init__()
+            self.scale = scale
+
+        def forward(self, x):
+            return x * self.scale
+
+    def __init__(self):
+        act = nn.GELU
+        bn = lambda ch: nn.BatchNorm2d(ch)
+        conv = lambda ch_in, ch_out: nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
+
+        def make_layer(ch_in, ch_out):
+            return nn.Sequential(
+                conv(ch_in, ch_out),
+                bn(ch_out),
+                act(),
+                conv(ch_out, ch_out),
+                bn(ch_out),
+                act(),
+            )
+
+        self.net = nn.Sequential(
+            nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
+            act(),
+            make_layer(24, 64),
+            make_layer(64, 256),
+            make_layer(256, 256),
+            nn.MaxPool2d(3),
+            self.Flatten(),
+            nn.Linear(256, 10, bias=False),
+            self.Mul(1 / 9),
+        )
+
     def forward(self, x):
-        return x.view(x.size(0), -1)
+        return self.net(x)
 
+    def configure_optimizers(self):
+        batch_size = 500
+        hyp = {
+            "opt": {
+                "train_epochs": 9.9,
+                "batch_size": 1024,
+                "lr": 11.5,  # learning rate per 1024 examples
+                "momentum": 0.85,
+                "weight_decay": 0.0153,  # weight decay per 1024 examples (decoupled from learning rate)
+                "bias_scaler": 64.0,  # scales up learning rate (but not weight decay) for BatchNorm biases
+                "label_smoothing": 0.2,
+                "ema": {
+                    "start_epochs": 3,
+                    "decay_base": 0.95,
+                    "decay_pow": 3.0,
+                    "every_n_steps": 5,
+                },
+                "whiten_bias_epochs": 3,  # how many epochs to train the whitening layer bias before freezing
+            },
+        }
 
-class Mul(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
+        def triangle(steps, start=0, end=0, peak=0.5):
+            xp = torch.tensor([0, int(peak * steps), steps])
+            fp = torch.tensor([start, 1, end])
+            x = torch.arange(1 + steps)
+            m = (fp[1:] - fp[:-1]) / (xp[1:] - xp[:-1])
+            b = fp[:-1] - (m * xp[:-1])
+            indices = torch.sum(torch.ge(x[:, None], xp[None, :]), 1) - 1
+            indices = torch.clamp(indices, 0, len(m) - 1)
+            return m[indices] * x + b[indices]
 
-    def forward(self, x):
-        return x * self.scale
+        total_train_steps = 50_000 * 5
+        lr_schedule = triangle(total_train_steps, start=0.2, end=0.07, peak=0.23)
+        momentum = hyp["opt"]["momentum"]
+        kilostep_scale = 1024 * (1 + 1 / (1 - momentum))
+        lr = hyp["opt"]["lr"] / kilostep_scale  # un-decoupled learning rate for PyTorch SGD
+        wd = hyp["opt"]["weight_decay"] * batch_size / kilostep_scale
+        lr_biases = lr * hyp["opt"]["bias_scaler"]
 
-
-def make_net():
-    act = nn.GELU
-    bn = lambda ch: nn.BatchNorm2d(ch)
-    conv = lambda ch_in, ch_out: nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
-
-    net = nn.Sequential(
-        nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
-        act(),
-        nn.Sequential(
-            conv(24, 64),
-            nn.MaxPool2d(2),
-            bn(64),
-            act(),
-            conv(64, 64),
-            bn(64),
-            act(),
-        ),
-        nn.Sequential(
-            conv(64, 256),
-            nn.MaxPool2d(2),
-            bn(256),
-            act(),
-            conv(256, 256),
-            bn(256),
-            act(),
-        ),
-        nn.Sequential(
-            conv(256, 256),
-            nn.MaxPool2d(2),
-            bn(256),
-            act(),
-            conv(256, 256),
-            bn(256),
-            act(),
-        ),
-        nn.MaxPool2d(3),
-        Flatten(),
-        nn.Linear(256, 10, bias=False),
-        Mul(1 / 9),
-    )
-    # net[0].weight.requires_grad = False
-    return net
+        norm_biases = [p for k, p in model.named_parameters() if "norm" in k and p.requires_grad]
+        other_params = [p for k, p in model.named_parameters() if "norm" not in k and p.requires_grad]
+        param_configs = [
+            dict(params=norm_biases, lr=lr_biases, weight_decay=wd / lr_biases),
+            dict(params=other_params, lr=lr, weight_decay=wd / lr),
+        ]
+        optimizer = torch.optim.SGD(param_configs, momentum=momentum, nesterov=True)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: lr_schedule[i])
+        return optimizer, scheduler, batch_size
 
 
 def train(device, train_inputs, train_labels, time_limit):
     # model = Net().to(device)
-    model = make_net().to(device)
+    model = KellerNet().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer, scheduler, batch_size = model.configure_optimizers()
     n_items = 0
