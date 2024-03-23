@@ -274,7 +274,7 @@ print("Compiling model...")
 # net = torch.compile(net)
 start_time = time.time()
 print("Start training...")
-net, n_items = train(net, train_inputs, train_labels, time_limit=5)
+n_items = train(net, train_inputs, train_labels, time_limit=5)
 print(f"Trained in {time.time() - start_time:.2f} seconds, {n_items / len(train_inputs):.1f} epochs")
 
 # Evaluate on test set
