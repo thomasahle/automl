@@ -233,6 +233,9 @@ train_labels, test_labels = train_labels.long(), test_labels.long()
 for layer in net.children():
     if hasattr(layer, "reset_parameters"):
         layer.reset_parameters()
+    print(layer.dtype)
+
+print(train_inputs.dtype, train_labels.dtype, test_inputs.dtype, test_labels.dtype)
 
 
 print("Compiling model...")
