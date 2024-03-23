@@ -138,8 +138,8 @@ class KellerNet(nn.Module):
 
 
 def train(device, train_inputs, train_labels, time_limit):
-    model = Net().to(device)
-    # model = KellerNet().to(device)
+    # model = Net().to(device)
+    model = KellerNet().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer, scheduler, batch_size = model.get_optimizers()
     n_items = 0
