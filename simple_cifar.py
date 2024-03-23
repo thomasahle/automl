@@ -141,7 +141,7 @@ class KellerNet(nn.Module):
     def get_optimizers_simple(self):
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-        batch_size = 256
+        batch_size = 512
         return optimizer, scheduler, batch_size
 
 
