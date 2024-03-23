@@ -45,20 +45,30 @@ class KellerNet(nn.Module):
         def forward(self, x):
             return x * self.scale
 
+    class Conv(nn.Conv2d):
+        def __init__(self, in_channels, out_channels, kernel_size=3, padding="same", bias=False):
+            super().__init__(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=bias)
+
+        def reset_parameters(self):
+            super().reset_parameters()
+            if self.bias is not None:
+                self.bias.data.zero_()
+            # Create an implicit residual via identity initialization
+            w = self.weight.data
+            torch.nn.init.dirac_(w[: w.size(1)])
+
     def __init__(self):
         super().__init__()
         act = nn.GELU
-        bn = lambda ch: nn.BatchNorm2d(ch)
-        conv = lambda ch_in, ch_out: nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
 
         def make_layer(ch_in, ch_out):
             return nn.Sequential(
-                conv(ch_in, ch_out),
+                self.Conv(ch_in, ch_out),
                 nn.MaxPool2d(2),
-                bn(ch_out),
+                nn.BatchNorm2d(ch_out),
                 act(),
-                conv(ch_out, ch_out),
-                bn(ch_out),
+                self.Conv(ch_out, ch_out),
+                nn.BatchNorm2d(ch_out),
                 act(),
             )
 
