@@ -208,7 +208,7 @@ def make_data(device):
     )
 
 
-torch.set_default_dtype(torch.float16)
+# torch.set_default_dtype(torch.float16)
 
 # Set device (GPU if available, else CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
