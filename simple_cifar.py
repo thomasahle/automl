@@ -7,6 +7,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+torch.set_default_dtype(torch.float32)
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -83,7 +85,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
-        self.net.reset_parameters()
+        # self.net.reset_parameters()
         # self.net = self.net.half()
 
     def forward(self, x):
