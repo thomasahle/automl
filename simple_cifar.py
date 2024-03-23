@@ -205,9 +205,7 @@ class KellerNet(nn.Module):
         return optimizer, scheduler, batch_size
 
 
-def train(device, train_inputs, train_labels, time_limit):
-    # model = Net().to(device)
-    model = KellerNet().to(device)
+def train(model, train_inputs, train_labels, time_limit):
     criterion = nn.CrossEntropyLoss()
     optimizer, scheduler, batch_size = model.get_optimizers()
     n_items = 0
@@ -278,7 +276,11 @@ print(
 # Train the model
 start_time = time.time()
 print("Start training...")
-model, n_items = train(device, train_inputs, train_labels, time_limit=5)
+
+# net = Net().to(device)
+net = KellerNet().to(device)
+net = torch.compile(net, mode="max-autotune")
+model, n_items = train(net, train_inputs, train_labels, time_limit=5)
 print(f"Trained in {time.time() - start_time:.2f} seconds, {n_items / len(train_inputs):.1f} epochs")
 
 # Evaluate on test set
