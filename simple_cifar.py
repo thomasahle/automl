@@ -83,6 +83,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
+        self.net.reset_parameters()
         # self.net = self.net.half()
 
     def forward(self, x):
@@ -225,7 +226,7 @@ print(
 print("Creating model...")
 net = KellerNet().to(device)
 
-train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
+# train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
 
 print("Compiling model...")
 # net = torch.compile(net)
