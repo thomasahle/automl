@@ -228,7 +228,7 @@ print(
 print("Creating model...")
 net = KellerNet().to(device)
 
-# train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
+train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
 
 print("Compiling model...")
 # net = torch.compile(net)
