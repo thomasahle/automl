@@ -197,7 +197,12 @@ def make_data(device):
     test_inputs = batch_normalize_images(test_inputs)
     print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
-    return train_inputs.to(device), train_labels.to(device), test_inputs.to(device), test_labels.to(device)
+    return (
+        train_inputs.half().to(device),
+        train_labels.to(device),
+        test_inputs.half().to(device),
+        test_labels.to(device),
+    )
 
 
 # Set device (GPU if available, else CPU)
