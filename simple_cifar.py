@@ -80,7 +80,7 @@ def make_net():
         nn.Linear(256, 10, bias=False),
         Mul(1 / 9),
     )
-    net[0].weight.requires_grad = False
+    # net[0].weight.requires_grad = False
     return net
 
 
