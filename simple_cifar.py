@@ -7,8 +7,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-torch.set_default_dtype(torch.float16)
-
 
 class Net(nn.Module):
     def __init__(self):
@@ -210,6 +208,8 @@ def make_data(device):
     )
 
 
+torch.set_default_dtype(torch.float16)
+
 # Set device (GPU if available, else CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 # device = torch.device("mps")
@@ -229,6 +229,7 @@ print("Creating model...")
 net = KellerNet().to(device)
 
 train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
+net.reset_parameters()
 
 print("Compiling model...")
 # net = torch.compile(net)
