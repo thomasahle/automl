@@ -256,8 +256,8 @@ def make_data(device):
     def batch_normalize_images(input_images):
         return (input_images - mean.view(1, -1, 1, 1)) / std.view(1, -1, 1, 1)
 
-    train_inputs = batch_normalize_images(train_inputs)
-    test_inputs = batch_normalize_images(test_inputs)
+    # train_inputs = batch_normalize_images(train_inputs)
+    # test_inputs = batch_normalize_images(test_inputs)
     print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return train_inputs.to(device), train_labels.to(device), test_inputs.to(device), test_labels.to(device)
