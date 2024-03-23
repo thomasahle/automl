@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-torch.set_default_dtype(torch.float32)
+torch.set_default_dtype(torch.float16)
 
 
 class Net(nn.Module):
