@@ -90,7 +90,6 @@ class KellerNet(nn.Module):
         return self.net(x)
 
     def get_optimizers(self):
-        batch_size = 500
         hyp = {
             "opt": {
                 "train_epochs": 9.9,
@@ -109,6 +108,7 @@ class KellerNet(nn.Module):
                 "whiten_bias_epochs": 3,  # how many epochs to train the whitening layer bias before freezing
             },
         }
+        batch_size = hyp["opt"]["batch_size"]
 
         def triangle(steps, start=0, end=0, peak=0.5):
             xp = torch.tensor([0, int(peak * steps), steps])
@@ -141,7 +141,7 @@ class KellerNet(nn.Module):
     def get_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-        batch_size = 256
+        batch_size = 512
         return optimizer, scheduler, batch_size
 
 
