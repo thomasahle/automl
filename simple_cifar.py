@@ -241,10 +241,10 @@ net = KellerNet().to(device)
 
 print("Compiling model...")
 # net = torch.compile(net)
-# print("Warmup...")
-# for _ in range(5):
-#     train(net, train_inputs, train_labels, time_limit=1)
-# torch.compile(model_trainbias, mode='max-autotune')
+net = torch.compile(net, mode="max-autotune")
+print("Warmup...")
+for _ in range(5):
+    train(net, train_inputs, train_labels, time_limit=1)
 start_time = time.time()
 print("Start training...")
 n_items = train(net, train_inputs, train_labels, time_limit=5)
