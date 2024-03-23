@@ -54,6 +54,7 @@ class KellerNet(nn.Module):
         def make_layer(ch_in, ch_out):
             return nn.Sequential(
                 conv(ch_in, ch_out),
+                nn.MaxPool2d(2),
                 bn(ch_out),
                 act(),
                 conv(ch_out, ch_out),
@@ -115,8 +116,8 @@ class KellerNet(nn.Module):
         wd = hyp["opt"]["weight_decay"] * batch_size / kilostep_scale
         lr_biases = lr * hyp["opt"]["bias_scaler"]
 
-        norm_biases = [p for k, p in model.named_parameters() if "norm" in k and p.requires_grad]
-        other_params = [p for k, p in model.named_parameters() if "norm" not in k and p.requires_grad]
+        norm_biases = [p for k, p in self.named_parameters() if "norm" in k and p.requires_grad]
+        other_params = [p for k, p in self.named_parameters() if "norm" not in k and p.requires_grad]
         param_configs = [
             dict(params=norm_biases, lr=lr_biases, weight_decay=wd / lr_biases),
             dict(params=other_params, lr=lr, weight_decay=wd / lr),
@@ -154,17 +155,23 @@ def make_data(device):
     transform = transforms.Compose(
         [
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomRotation(15),
+            # transforms.RandomCrop(32, padding=4),
+            # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
         ]
     )
     trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
     testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
-    traindata = torch.utils.data.DataLoader(trainset, batch_size=2 * len(trainset), shuffle=False, num_workers=0)
+    traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=False, num_workers=0)
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
-    train_inputs, train_labels = next(iter(traindata))
     test_inputs, test_labels = next(iter(testdata))
+    train_inputs, train_labels = [], []
+    for _ in range(2):
+        ti, tl = next(iter(traindata))
+        train_inputs.append(ti)
+        train_labels.append(tl)
+    train_inputs = torch.cat(train_inputs)
+    train_labels = torch.cat(train_labels)
 
     std, mean = torch.std_mean(train_inputs, dim=(0, 2, 3))
 
@@ -173,12 +180,13 @@ def make_data(device):
 
     train_inputs = batch_normalize_images(train_inputs)
     test_inputs = batch_normalize_images(test_inputs)
+    print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return train_inputs.to(device), train_labels.to(device), test_inputs.to(device), test_labels.to(device)
 
 
 # Set device (GPU if available, else CPU)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 # device = torch.device("mps")
 
 # Make the data
