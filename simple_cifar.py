@@ -46,6 +46,7 @@ class KellerNet(nn.Module):
             return x * self.scale
 
     def __init__(self):
+        super().__init__()
         act = nn.GELU
         bn = lambda ch: nn.BatchNorm2d(ch)
         conv = lambda ch_in, ch_out: nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
