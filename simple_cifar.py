@@ -144,7 +144,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
-        self.net = make_net()
+        # self.net = make_net()
 
     def forward(self, x):
         return self.net(x)
