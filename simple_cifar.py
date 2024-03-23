@@ -32,6 +32,67 @@ class Net(nn.Module):
         return optimizer, scheduler, batch_size
 
 
+class Flatten(nn.Module):
+    def forward(self, x):
+        return x.view(x.size(0), -1)
+
+
+class Mul(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        return x * self.scale
+
+
+def conv(ch_in, ch_out):
+    return nn.Conv2d(ch_in, ch_out, kernel_size=3, padding="same", bias=False)
+
+
+def make_net():
+    act = nn.GELU
+    bn = lambda ch: nn.BatchNorm2d(ch)
+
+    net = nn.Sequential(
+        nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
+        act(),
+        nn.Sequential(
+            conv(24, 64),
+            nn.MaxPool2d(2),
+            bn(64),
+            act(),
+            conv(64, 64),
+            bn(64),
+            act(),
+        ),
+        nn.Sequential(
+            conv(64, 256),
+            nn.MaxPool2d(2),
+            bn(256),
+            act(),
+            conv(256, 256),
+            bn(256),
+            act(),
+        ),
+        nn.Sequential(
+            conv(256, 256),
+            nn.MaxPool2d(2),
+            bn(256),
+            act(),
+            conv(256, 256),
+            bn(256),
+            act(),
+        ),
+        nn.MaxPool2d(3),
+        Flatten(),
+        nn.Linear(256, 10, bias=False),
+        Mul(1 / 9),
+    )
+    net[0].weight.requires_grad = False
+    return net
+
+
 class KellerNet(nn.Module):
     class Flatten(nn.Module):
         def forward(self, x):
@@ -83,6 +144,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
+        self.net = make_net()
 
     def forward(self, x):
         return self.net(x)
