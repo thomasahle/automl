@@ -25,6 +25,12 @@ class Net(nn.Module):
         x = self.fc2(x)
         return x
 
+    def get_optimizers(self):
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
+        batch_size = 256
+        return optimizer, scheduler, batch_size
+
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -88,9 +94,7 @@ def train(device, train_inputs, train_labels, time_limit):
     # model = Net().to(device)
     model = make_net().to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-    batch_size = 256
+    optimizer, scheduler, batch_size = model.configure_optimizers()
     n_items = 0
     start_time = time.time()
     while time.time() - start_time < time_limit:
@@ -113,16 +117,27 @@ def train(device, train_inputs, train_labels, time_limit):
 def make_data(device):
     transform = transforms.Compose(
         [
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomRotation(15),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
     )
     trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
     testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
-    traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=False, num_workers=0)
+    traindata = torch.utils.data.DataLoader(trainset, batch_size=2 * len(trainset), shuffle=False, num_workers=0)
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     train_inputs, train_labels = next(iter(traindata))
     test_inputs, test_labels = next(iter(testdata))
+
+    std, mean = torch.std_mean(train_inputs, dim=(0, 2, 3))
+
+    def batch_normalize_images(input_images):
+        return (input_images - mean.view(1, -1, 1, 1)) / std.view(1, -1, 1, 1)
+
+    train_inputs = batch_normalize_images(train_inputs)
+    test_inputs = batch_normalize_images(test_inputs)
+
     return train_inputs.to(device), train_labels.to(device), test_inputs.to(device), test_labels.to(device)
 
 
