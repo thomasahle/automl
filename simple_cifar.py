@@ -229,7 +229,10 @@ print("Creating model...")
 net = KellerNet().to(device)
 
 train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
-net.reset_parameters()
+for layer in net.children():
+    if hasattr(layer, "reset_parameters"):
+        layer.reset_parameters()
+
 
 print("Compiling model...")
 # net = torch.compile(net)
