@@ -234,12 +234,12 @@ def make_data(device):
         [
             transforms.RandomHorizontalFlip(),
             # transforms.RandomCrop(32, padding=4),
-            # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
         ]
     )
     trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transforms.ToTensor())
     traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=True, num_workers=0)
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     test_inputs, test_labels = next(iter(testdata))
