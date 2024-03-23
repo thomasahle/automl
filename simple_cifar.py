@@ -208,7 +208,7 @@ def make_data(device):
     )
 
 
-# torch.set_default_dtype(torch.float16)
+torch.set_default_dtype(torch.float16)
 
 # Set device (GPU if available, else CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
@@ -229,6 +229,7 @@ print("Creating model...")
 net = KellerNet().to(device)
 
 train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
+train_labels, test_labels = train_labels.long(), test_labels.long()
 for layer in net.children():
     if hasattr(layer, "reset_parameters"):
         layer.reset_parameters()
