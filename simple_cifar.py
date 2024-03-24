@@ -187,4 +187,19 @@ net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_
 # for _ in range(3):
 #    train(net, train_inputs, train_labels, time_limit=1)
 
-results = train(net, train_inputs, train_labels, time_limit=5)
+accuracies = []
+for i in range(3):
+    print(f"\nRun {i+1}:")
+    results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=10)
+    accuracies.append([result[2] for result in results])
+
+# Compute the standard deviation of the accuracy
+accuracies = np.array(accuracies)
+mean_accuracy = np.mean(accuracies, axis=0)
+std_accuracy = np.std(accuracies, axis=0)
+
+print("\nAccuracy Statistics:")
+print(f"{'Epoch':>10}{'Mean Accuracy (%)':>20}{'Std Deviation':>20}")
+print(f"{'-'*10:>10}{'-'*20:>20}{'-'*20:>20}")
+for i in range(len(mean_accuracy)):
+    print(f"{i+1:10}{mean_accuracy[i]:20.2f}{std_accuracy[i]:20.2f}")
