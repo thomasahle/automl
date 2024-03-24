@@ -68,20 +68,6 @@ hyp = {
 }
 
 
-class Flatten(nn.Module):
-    def forward(self, x):
-        return x.view(x.size(0), -1)
-
-
-class Mul(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
-
-
 class ConvGroup(nn.Module):
     def __init__(self, channels_in, channels_out, batchnorm_momentum):
         super().__init__()
@@ -117,9 +103,8 @@ class KellerNet(nn.Module):
             ConvGroup(widths["block1"], widths["block2"], batchnorm_momentum),
             ConvGroup(widths["block2"], widths["block3"], batchnorm_momentum),
             nn.MaxPool2d(3),
-            Flatten(),
+            nn.Flatten(),
             nn.Linear(widths["block3"], 10, bias=False),
-            Mul(hyp["net"]["scaling_factor"]),
         )
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
