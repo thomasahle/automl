@@ -83,6 +83,7 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
+        net[0].weight.requires_grad = False
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
         for mod in net.modules():
@@ -246,7 +247,7 @@ train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
 # print(train_inputs.dtype, train_labels.dtype, test_inputs.dtype, test_labels.dtype)
 
 
-print("Compiling model...")
+# print("Compiling model...")
 # net = torch.compile(net)
 # net = torch.compile(net, mode="max-autotune")
 # print("Warmup...")
