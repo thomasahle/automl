@@ -124,29 +124,6 @@ class ConvGroup(nn.Module):
         return x
 
 
-def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchnorm_momentum"]):
-    whiten_kernel_size = 2
-    whiten_width = 2 * 3 * whiten_kernel_size**2
-    net = nn.Sequential(
-        Conv(3, whiten_width, whiten_kernel_size, padding=0, bias=True),
-        nn.GELU(),
-        ConvGroup(whiten_width, widths["block1"], batchnorm_momentum),
-        ConvGroup(widths["block1"], widths["block2"], batchnorm_momentum),
-        ConvGroup(widths["block2"], widths["block3"], batchnorm_momentum),
-        nn.MaxPool2d(3),
-        Flatten(),
-        nn.Linear(widths["block3"], 10, bias=False),
-        Mul(hyp["net"]["scaling_factor"]),
-    )
-    net[0].weight.requires_grad = False
-    net = net.half().cuda()
-    net = net.to(memory_format=torch.channels_last)
-    for mod in net.modules():
-        if isinstance(mod, BatchNorm):
-            mod.float()
-    return net
-
-
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
@@ -165,7 +142,6 @@ class KellerNet(nn.Module):
             nn.Linear(widths["block3"], 10, bias=False),
             Mul(hyp["net"]["scaling_factor"]),
         )
-        net[0].weight.requires_grad = False
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
         for mod in net.modules():
