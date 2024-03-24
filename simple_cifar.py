@@ -79,7 +79,7 @@ def train(model, train_inputs, train_labels, time_limit):
     ender = torch.cuda.Event(enable_timing=True)
 
     results = []
-    n_items = 0
+    total_items = 0
     while total_time_seconds < time_limit:
         perm = torch.randperm(len(train_inputs))
         train_inputs = train_inputs[perm]
@@ -90,16 +90,21 @@ def train(model, train_inputs, train_labels, time_limit):
 
         approx_time = time.time()
         train_loss = 0.0
+        train_items = 0
         for i in range(0, len(train_inputs), batch_size):
             optimizer.zero_grad()
             outputs = model(train_inputs[i : i + batch_size])
             loss = criterion(outputs, train_labels[i : i + batch_size])
             loss.backward()
             optimizer.step()
-            n_items += len(train_inputs[i : i + batch_size])
+
+            this_batch_size = len(train_inputs[i : i + batch_size])
+            total_items += this_batch_size
+            train_items += this_batch_size
             train_loss += loss.item()
             if total_time_seconds + time.time() - approx_time >= time_limit:
                 break
+        train_loss /= train_items
         scheduler.step()
 
         ender.record()
@@ -111,7 +116,7 @@ def train(model, train_inputs, train_labels, time_limit):
             outputs = net(test_inputs)
             _, predicted = torch.max(outputs.data, 1)
             accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
-            results.append([n_items / len(train_labels), train_loss, accuracy, total_time_seconds])
+            results.append([total_items / len(train_labels), train_loss, accuracy, total_time_seconds])
             print(results[-1])
 
     return results
