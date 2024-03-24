@@ -1,16 +1,17 @@
 import torchvision
 import torchvision.transforms as transforms
 import time
-
-import torch.optim as optim
 import torch
+
+sample_net_0 = """
+import torch
+import torch.optim as optim
 import torch.nn.functional as F
 from torch import nn
 
-
 class Net(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
         self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
@@ -29,13 +30,16 @@ class Net(nn.Module):
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
         batch_size = 256
-        return optimizer, scheduler, batch_size
+        loss_fn = nn.CrossEntropyLoss(reduction="sum")
+        return optimizer, scheduler, batch_size, loss_fn
+"""
 
-
-## KellerNet
-
-
-class KellerNet(nn.Module):
+sample_net_1 = """
+import torch
+import torch.optim as optim
+import torch.nn.functional as F
+from torch import nn
+class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
@@ -69,6 +73,7 @@ class KellerNet(nn.Module):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         loss_fn = nn.CrossEntropyLoss(reduction="sum")
         return optimizer, scheduler, loss_fn, batch_size
+"""
 
 
 def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limit):
@@ -114,9 +119,9 @@ def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limi
         torch.cuda.synchronize()
         total_time_seconds += 1e-3 * starter.elapsed_time(ender)
 
-        net.eval()
+        model.eval()
         with torch.no_grad():
-            outputs = net(test_inputs)
+            outputs = model(test_inputs)
             _, predicted = torch.max(outputs.data, 1)
             accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
             results.append([total_items / len(train_labels), train_loss, accuracy, total_time_seconds])
@@ -125,7 +130,7 @@ def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limi
     return results
 
 
-def make_data(device):
+def make_data(dataset):
     transform = transforms.Compose(
         [
             # transforms.RandomHorizontalFlip(),
@@ -155,62 +160,75 @@ def make_data(device):
     train_inputs = batch_normalize_images(train_inputs)
     test_inputs = batch_normalize_images(test_inputs)
 
-    return (
-        train_inputs.to(torch.bfloat16).to(device),
-        train_labels.to(device),
-        test_inputs.to(torch.bfloat16).to(device),
-        test_labels.to(device),
-    )
+    return (train_inputs, train_labels, test_inputs, test_labels)
 
 
-# Set device (GPU if available, else CPU)
-device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-
-# Make the data
-print("Loading data")
-start_time = time.time()
-train_inputs, train_labels, test_inputs, test_labels = make_data(device)
-print(
-    f"Loaded {len(train_inputs)} training and {len(test_inputs)} "
-    f"test examples in {time.time() - start_time:.2f} seconds"
-)
+# This is totally unsafe. Run at your own risk.
+def run_code_and_get_class(code, class_name):
+    namespace = {}
+    exec(code, namespace)
+    return namespace[class_name]
 
 
-# net = Net().to(device)
-print("Creating model...")
+def main(
+    program,
+    device,
+    dataset,
+    time_limit=5,
+    compile=False,
+):
+    model_class = run_code_and_get_class(program, "Net")
 
-# print("Compiling model...")
-# net = torch.compile(net)
-# net = torch.compile(net, mode="max-autotune")
-# print("Warmup...")
-# for _ in range(3):
-#    train(net, train_inputs, train_labels, time_limit=1)
-
-print("Warmup...")
-net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
-train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
-
-accuracies = []
-train_losses = []
-for i in range(3):
-    print(f"\nRun {i+1}:")
-    net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
-    results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=5)
-    accuracies.append([result[2] for result in results])
-    train_losses.append([result[1] for result in results])
-
-# Compute the standard deviation of the accuracy and training loss
-accuracies = torch.tensor(accuracies)
-train_losses = torch.tensor(train_losses)
-mean_accuracy = torch.mean(accuracies, axis=0)
-std_accuracy = torch.std(accuracies, axis=0)
-mean_train_loss = torch.mean(train_losses, axis=0)
-std_train_loss = torch.std(train_losses, axis=0)
-
-print("\nTraining Statistics:")
-print(f"{'Epoch':>5}{'Train Loss':>25}{'Accuracy (%)':>25}")
-print(f"{'-'*5:>5}{'-'*25:>25}{'-'*25:>25}")
-for i in range(len(mean_accuracy)):
+    print("Loading data")
+    start_time = time.time()
+    train_inputs, train_labels, test_inputs, test_labels = [d.to(device) for d in make_data(dataset)]
+    train_inputs = train_inputs.to(torch.bfloat16)
+    test_inputs = test_inputs.to(torch.bfloat16)
     print(
-        f"{i+1:5}{mean_train_loss[i]:15.4f} +/- {std_train_loss[i]:.4f}{mean_accuracy[i]*100:6.2f} +/- {std_accuracy[i]*100:5.2f}%"
+        f"Loaded {len(train_inputs)} training and {len(test_inputs)} "
+        f"test examples in {time.time() - start_time:.2f} seconds"
     )
+
+    if compile:
+        print("Compiling model...")
+        net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+        net = torch.compile(net)
+        net = torch.compile(net, mode="max-autotune")
+        print("Warmup...")
+        for _ in range(3):
+            train(net, train_inputs, train_labels, time_limit=1)
+
+    print("Warmup...")
+    net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+    train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
+
+    accuracies = []
+    train_losses = []
+    for i in range(3):
+        print(f"\nRun {i+1}:")
+        net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+        results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=time_limit)
+        accuracies.append([result[2] for result in results])
+        train_losses.append([result[1] for result in results])
+
+    # Compute the standard deviation of the accuracy and training loss
+    accuracies = torch.tensor(accuracies)
+    train_losses = torch.tensor(train_losses)
+    mean_accuracy = torch.mean(accuracies, axis=0)
+    std_accuracy = torch.std(accuracies, axis=0)
+    mean_train_loss = torch.mean(train_losses, axis=0)
+    std_train_loss = torch.std(train_losses, axis=0)
+
+    print("\nTraining Statistics:")
+    print(f"{'Epoch':>5}{'Train Loss':>25}{'Accuracy (%)':>25}")
+    print(f"{'-'*5:>5}{'-'*25:>25}{'-'*25:>25}")
+    for i in range(len(mean_accuracy)):
+        print(
+            f"{i+1:5}{mean_train_loss[i]:15.4f} +/- {std_train_loss[i]:.4f}{mean_accuracy[i]*100:6.2f} +/- {std_accuracy[i]*100:5.2f}%"
+        )
+
+
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps")
+    # main(sample_net_0)
+    main(sample_net_1, device, "cifar10", time_limit=5)
