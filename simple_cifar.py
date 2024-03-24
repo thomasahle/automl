@@ -132,9 +132,6 @@ class KellerNet(nn.Module):
         )
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
-        for mod in net.modules():
-            if isinstance(mod, BatchNorm):
-                mod.float()
         self.net = net
 
     def forward(self, x):
