@@ -188,7 +188,7 @@ print("Creating model...")
 
 print("Warmup...")
 net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
-train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
+train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=0.5)
 
 accuracies = []
 for i in range(3):
