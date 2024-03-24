@@ -72,7 +72,7 @@ class KellerNet(nn.Module):
                 act(),
             )
 
-        self.net = nn.Sequential(
+        net = nn.Sequential(
             nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
             act(),
             make_layer(24, 64),
@@ -83,8 +83,13 @@ class KellerNet(nn.Module):
             nn.Linear(256, 10, bias=False),
             self.Mul(1 / 9),
         )
-        # self.net.reset_parameters()
-        # self.net = self.net.half()
+        net = net.half().cuda()
+        net = net.to(memory_format=torch.channels_last)
+        for mod in net.modules():
+            if isinstance(mod, nn.BatchNorm2d):
+                mod.float()
+
+        self.net = net
 
     def forward(self, x):
         return self.net(x)
