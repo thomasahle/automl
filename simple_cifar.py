@@ -104,13 +104,13 @@ class Conv(nn.Conv2d):
 
 
 class ConvGroup(nn.Module):
-    def __init__(self, channels_in, channels_out):
+    def __init__(self, channels_in, channels_out, bn):
         super().__init__()
         self.conv1 = Conv(channels_in, channels_out)
         self.pool = nn.MaxPool2d(2)
-        self.norm1 = BatchNorm(channels_out)
+        self.norm1 = BatchNorm(channels_out, bn)
         self.conv2 = Conv(channels_out, channels_out)
-        self.norm2 = BatchNorm(channels_out)
+        self.norm2 = BatchNorm(channels_out, bn)
         self.activ = nn.GELU()
 
     def forward(self, x):
