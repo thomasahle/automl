@@ -120,7 +120,8 @@ def train(model, train_inputs, train_labels, time_limit):
             _, predicted = torch.max(outputs.data, 1)
             accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
             results.append([total_items / len(train_labels), train_loss, accuracy, total_time_seconds])
-            print(f"{results[-1][0]:<10.2f}{results[-1][1]:<15.4f}{results[-1][2]:<15.4f}{results[-1][3]:<10.2f}")
+            # print(f"{results[-1][0]:<10.2f}{results[-1][1]:<15.4f}{results[-1][2]:<15.4f}{results[-1][3]:<10.2f}")
+            print(f"{results[-1][0]:10.2f}{results[-1][1]:15.4f}{results[-1][2]:15.2f}{results[-1][3]:10.2f}")
 
     return results
 
