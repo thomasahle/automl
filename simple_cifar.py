@@ -188,20 +188,29 @@ print("Creating model...")
 
 print("Warmup...")
 net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
-train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=0.5)
+train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
 
 accuracies = []
+train_losses = []
 for i in range(3):
     print(f"\nRun {i+1}:")
     net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
     results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=5)
     accuracies.append([result[2] for result in results])
+    train_losses.append([result[1] for result in results])
 
-# Compute the standard deviation of the accuracy
+# Compute the standard deviation of the accuracy and training loss
 accuracies = torch.tensor(accuracies)
+train_losses = torch.tensor(train_losses)
 mean_accuracy = torch.mean(accuracies, axis=0)
 std_accuracy = torch.std(accuracies, axis=0)
+mean_train_loss = torch.mean(train_losses, axis=0)
+std_train_loss = torch.std(train_losses, axis=0)
 
-print("\nAccuracy Statistics:")
+print("\nTraining Statistics:")
+print(f"{'Epoch':>5}{'Mean Accuracy (%)':>20}{'Accuracy Std Dev':>20}{'Mean Train Loss':>20}{'Train Loss Std Dev':>20}")
+print(f"{'-'*5:>5}{'-'*20:>20}{'-'*20:>20}{'-'*20:>20}{'-'*20:>20}")
 for i in range(len(mean_accuracy)):
-    print(f"{i+1:2}: {mean_accuracy[i]*100:19.2f}% +/- {std_accuracy[i]*100:.2f}")
+    print(
+        f"{i+1:5}{mean_accuracy[i]*100:20.2f}{std_accuracy[i]*100:20.2f}{mean_train_loss[i]:20.4f}{std_train_loss[i]:20.4f}"
+    )
