@@ -74,6 +74,9 @@ class KellerNet(nn.Module):
 def train(model, train_inputs, train_labels, time_limit):
     optimizer, scheduler, criterion, batch_size = model.get_optimizers()
 
+    print(f"{'Epoch':<10}{'Train Loss':<15}{'Accuracy':<15}{'Time':<10}")
+    print(f"{'-'*10:<10}{'-'*15:<15}{'-'*15:<15}{'-'*10:<10}")
+
     total_time_seconds = 0
     starter = torch.cuda.Event(enable_timing=True)
     ender = torch.cuda.Event(enable_timing=True)
@@ -117,7 +120,7 @@ def train(model, train_inputs, train_labels, time_limit):
             _, predicted = torch.max(outputs.data, 1)
             accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
             results.append([total_items / len(train_labels), train_loss, accuracy, total_time_seconds])
-            print(results[-1])
+            print(f"{results[-1][0]:<10.2f}{results[-1][1]:<15.4f}{results[-1][2]:<15.4f}{results[-1][3]:<10.2f}")
 
     return results
 
@@ -184,11 +187,5 @@ net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_
 # print("Warmup...")
 # for _ in range(3):
 #    train(net, train_inputs, train_labels, time_limit=1)
-start_time = time.time()
-print("Start training...")
-n_items = train(net, train_inputs, train_labels, time_limit=5)
-print(f"Trained in {time.time() - start_time:.2f} seconds, {n_items / len(train_inputs):.1f} epochs")
 
-# Evaluate on test set
-
-print(f"Accuracy on test set: {100 * correct / total:.2f}%")
+results = train(net, train_inputs, train_labels, time_limit=5)
