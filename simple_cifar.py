@@ -104,13 +104,13 @@ class Conv(nn.Conv2d):
 
 
 class ConvGroup(nn.Module):
-    def __init__(self, channels_in, channels_out, batchnorm_momentum):
+    def __init__(self, channels_in, channels_out):
         super().__init__()
         self.conv1 = Conv(channels_in, channels_out)
         self.pool = nn.MaxPool2d(2)
-        self.norm1 = BatchNorm(channels_out, batchnorm_momentum)
+        self.norm1 = BatchNorm(channels_out)
         self.conv2 = Conv(channels_out, channels_out)
-        self.norm2 = BatchNorm(channels_out, batchnorm_momentum)
+        self.norm2 = BatchNorm(channels_out)
         self.activ = nn.GELU()
 
     def forward(self, x):
@@ -124,33 +124,26 @@ class ConvGroup(nn.Module):
         return x
 
 
-def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchnorm_momentum"]):
-    whiten_kernel_size = 2
-    whiten_width = 2 * 3 * whiten_kernel_size**2
-    net = nn.Sequential(
-        Conv(3, whiten_width, whiten_kernel_size, padding=0, bias=True),
-        nn.GELU(),
-        ConvGroup(whiten_width, widths["block1"], batchnorm_momentum),
-        ConvGroup(widths["block1"], widths["block2"], batchnorm_momentum),
-        ConvGroup(widths["block2"], widths["block3"], batchnorm_momentum),
-        nn.MaxPool2d(3),
-        Flatten(),
-        nn.Linear(widths["block3"], 10, bias=False),
-        Mul(hyp["net"]["scaling_factor"]),
-    )
-    net[0].weight.requires_grad = False
-    net = net.half().cuda()
-    net = net.to(memory_format=torch.channels_last)
-    for mod in net.modules():
-        if isinstance(mod, BatchNorm):
-            mod.float()
-    return net
-
-
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.net = make_net()
+        net = nn.Sequential(
+            Conv(3, 64, 3, padding=1),
+            nn.GELU(),
+            ConvGroup(64, 256),
+            ConvGroup(256, 256),
+            ConvGroup(256, 256),
+            nn.MaxPool2d(3),
+            Flatten(),
+            nn.Linear(256, 10, bias=False),
+            Mul(1 / 9),
+        )
+        net = net.half().cuda()
+        net = net.to(memory_format=torch.channels_last)
+        for mod in net.modules():
+            if isinstance(mod, BatchNorm):
+                mod.float()
+        self.net = net
 
     def forward(self, x):
         return self.net(x)
@@ -187,7 +180,7 @@ def train(model, train_inputs, train_labels, time_limit):
 def make_data(device):
     transform = transforms.Compose(
         [
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(),
             # transforms.RandomCrop(32, padding=4),
             # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
@@ -199,7 +192,7 @@ def make_data(device):
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     test_inputs, test_labels = next(iter(testdata))
     train_inputs, train_labels = [], []
-    for _ in range(2):
+    for _ in range(1):
         ti, tl = next(iter(traindata))
         train_inputs.append(ti)
         train_labels.append(tl)
@@ -216,11 +209,9 @@ def make_data(device):
     print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return (
-        # train_inputs.half().to(device),
-        train_inputs.to(device),
+        train_inputs.half().to(device),
         train_labels.to(device),
-        # test_inputs.half().to(device),
-        test_inputs.to(device),
+        test_inputs.half().to(device),
         test_labels.to(device),
     )
 
@@ -244,18 +235,6 @@ print(
 # net = Net().to(device)
 print("Creating model...")
 net = KellerNet().to(device)
-
-train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
-
-# train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
-# train_labels, test_labels = train_labels.long(), test_labels.long()
-# for layer in net.children():
-#     if hasattr(layer, "reset_parameters"):
-#         layer.reset_parameters()
-#     if hasattr(layer, "dtype"):
-#         print(layer.dtype)
-#
-# print(train_inputs.dtype, train_labels.dtype, test_inputs.dtype, test_labels.dtype)
 
 
 # print("Compiling model...")
