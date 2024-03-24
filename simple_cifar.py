@@ -150,6 +150,8 @@ def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchno
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
+        widths = hyp["net"]["widths"]
+        batchnorm_momentum = hyp["net"]["batchnorm_momentum"]
         whiten_kernel_size = 2
         whiten_width = 2 * 3 * whiten_kernel_size**2
         net = nn.Sequential(
