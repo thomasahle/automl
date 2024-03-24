@@ -38,7 +38,7 @@ class Net(nn.Module):
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
-        net = nn.Sequential(
+        self.net = nn.Sequential(
             nn.Conv2d(3, 24, 2, padding=0, bias=True),
             nn.GELU(),
             self.make_conv_group(24, 64),
@@ -48,9 +48,6 @@ class KellerNet(nn.Module):
             nn.Flatten(),
             nn.Linear(256, 10, bias=False),
         )
-        net = net.to(float.bfloat16).cuda()
-        net = net.to(memory_format=torch.channels_last)
-        self.net = net
 
     def make_conv_group(self, channels_in, channels_out):
         return nn.Sequential(
@@ -134,11 +131,8 @@ def make_data(device):
     )
 
 
-# torch.set_default_dtype(torch.float16)
-
 # Set device (GPU if available, else CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-# device = torch.device("mps")
 
 # Make the data
 print("Loading data")
@@ -152,8 +146,7 @@ print(
 
 # net = Net().to(device)
 print("Creating model...")
-net = KellerNet().to(device)
-
+net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
 
 # print("Compiling model...")
 # net = torch.compile(net)
