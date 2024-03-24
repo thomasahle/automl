@@ -48,7 +48,6 @@ class KellerNet(nn.Module):
             nn.Flatten(),
             nn.Linear(256, 10, bias=False),
         )
-        self.init_weights()
 
     def make_conv_group(self, channels_in, channels_out):
         return nn.Sequential(
