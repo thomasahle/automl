@@ -186,13 +186,14 @@ print("Creating model...")
 # for _ in range(3):
 #    train(net, train_inputs, train_labels, time_limit=1)
 
+print("Warmup...")
+net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
+
 accuracies = []
 for i in range(3):
     print(f"\nRun {i+1}:")
     net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
-    # for layer in net.children():
-    #     if hasattr(layer, "reset_parameters"):
-    #         layer.reset_parameters()
     results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=5)
     accuracies.append([result[2] for result in results])
 
