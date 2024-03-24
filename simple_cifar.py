@@ -39,7 +39,7 @@ class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(3, 24, 2, padding=0, bias=True),
+            nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
             nn.GELU(),
             self.make_conv_group(24, 64),
             self.make_conv_group(64, 256),
@@ -61,15 +61,6 @@ class KellerNet(nn.Module):
             nn.GELU(),
         )
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.orthogonal_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.orthogonal_(m.weight)
-
     def forward(self, x):
         return self.net(x) / 9
 
@@ -77,29 +68,54 @@ class KellerNet(nn.Module):
         batch_size = 1024
         optimizer = optim.Adam(self.parameters(), lr=0.01, fused=True)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
-        return optimizer, scheduler, batch_size
+        loss_fn = nn.CrossEntropyLoss(reduction="sum")
+        return optimizer, scheduler, loss_fn, batch_size
 
 
 def train(model, train_inputs, train_labels, time_limit):
-    criterion = nn.CrossEntropyLoss(reduction="sum")
-    optimizer, scheduler, batch_size = model.get_optimizers()
+    optimizer, scheduler, criterion, batch_size = model.get_optimizers()
+
+    total_time_seconds = 0
+    starter = torch.cuda.Event(enable_timing=True)
+    ender = torch.cuda.Event(enable_timing=True)
+
+    results = []
     n_items = 0
-    start_time = time.time()
-    while time.time() - start_time < time_limit:
+    while total_time_seconds < time_limit:
         perm = torch.randperm(len(train_inputs))
         train_inputs = train_inputs[perm]
         train_labels = train_labels[perm]
+
+        starter.record()
+        model.train()
+
+        train_loss = 0.0
         for i in range(0, len(train_inputs), batch_size):
             optimizer.zero_grad()
             outputs = model(train_inputs[i : i + batch_size])
             loss = criterion(outputs, train_labels[i : i + batch_size])
             loss.backward()
             optimizer.step()
-            n_items += batch_size
-            if time.time() - start_time >= time_limit:
+            n_items += len(train_inputs[i : i + batch_size])
+            train_loss += loss.item()
+            ender.record()  # No sync here, since it's too expensive
+            if total_time_seconds + 1e-3 * starter.elapsed_time(ender) >= time_limit:
                 break
         scheduler.step()
-    return n_items
+
+        ender.record()
+        torch.cuda.synchronize()
+        total_time_seconds += 1e-3 * starter.elapsed_time(ender)
+
+        net.eval()
+        with torch.no_grad():
+            outputs = net(test_inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
+            results.append([n_items / len(train_labels), train_loss, accuracy, total_time_seconds])
+            print(results[-1])
+
+    return results
 
 
 def make_data(device):
@@ -170,11 +186,5 @@ n_items = train(net, train_inputs, train_labels, time_limit=5)
 print(f"Trained in {time.time() - start_time:.2f} seconds, {n_items / len(train_inputs):.1f} epochs")
 
 # Evaluate on test set
-net.eval()
-with torch.no_grad():
-    outputs = net(test_inputs)
-    _, predicted = torch.max(outputs.data, 1)
-    total = test_labels.size(0)
-    correct = (predicted == test_labels).sum().item()
 
 print(f"Accuracy on test set: {100 * correct / total:.2f}%")
