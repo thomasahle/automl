@@ -203,7 +203,7 @@ class KellerNet(nn.Module):
 
 
 def train(model, train_inputs, train_labels, time_limit):
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction="sum")
     optimizer, scheduler, batch_size = model.get_optimizers()
     n_items = 0
     start_time = time.time()
