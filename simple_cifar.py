@@ -68,6 +68,15 @@ hyp = {
 }
 
 
+class Mul(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        return x * self.scale
+
+
 class ConvGroup(nn.Module):
     def __init__(self, channels_in, channels_out, batchnorm_momentum):
         super().__init__()
@@ -105,6 +114,7 @@ class KellerNet(nn.Module):
             nn.MaxPool2d(3),
             nn.Flatten(),
             nn.Linear(widths["block3"], 10, bias=False),
+            Mul(1 / 9),
         )
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
@@ -115,8 +125,8 @@ class KellerNet(nn.Module):
 
     def get_optimizers(self):
         batch_size = 1024
-        # optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4)
-        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
+        optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4, fused=True)
+        # optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         return optimizer, scheduler, batch_size
 
