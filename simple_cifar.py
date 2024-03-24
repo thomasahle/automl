@@ -124,9 +124,9 @@ def make_data(device):
     print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return (
-        train_inputs.to(torch.bfloat).to(device),
+        train_inputs.to(torch.bfloat16).to(device),
         train_labels.to(device),
-        test_inputs.to(torch.bfloat).to(device),
+        test_inputs.to(torch.bfloat16).to(device),
         test_labels.to(device),
     )
 
