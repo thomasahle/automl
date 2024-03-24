@@ -150,7 +150,23 @@ def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchno
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.net = make_net()
+        net = nn.Sequential(
+            Conv(3, 64, 3, padding=1),
+            nn.GELU(),
+            ConvGroup(64, 256, 0.6),
+            ConvGroup(256, 256, 0.6),
+            ConvGroup(256, 256, 0.6),
+            nn.MaxPool2d(3),
+            Flatten(),
+            nn.Linear(256, 10, bias=False),
+            Mul(1 / 9),
+        )
+        net = net.half().cuda()
+        net = net.to(memory_format=torch.channels_last)
+        for mod in net.modules():
+            if isinstance(mod, BatchNorm):
+                mod.float()
+        self.net = net
 
     def forward(self, x):
         return self.net(x)
