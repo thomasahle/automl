@@ -82,34 +82,13 @@ class Mul(nn.Module):
         return x * self.scale
 
 
-class BatchNorm(nn.BatchNorm2d):
-    def __init__(self, num_features, momentum, eps=1e-12, weight=False, bias=True):
-        super().__init__(num_features, eps=eps, momentum=1 - momentum)
-        self.weight.requires_grad = weight
-        self.bias.requires_grad = bias
-        # Note that PyTorch already initializes the weights to one and bias to zero
-
-
-class Conv(nn.Conv2d):
-    def __init__(self, in_channels, out_channels, kernel_size=3, padding="same", bias=False):
-        super().__init__(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=bias)
-
-    def reset_parameters(self):
-        super().reset_parameters()
-        if self.bias is not None:
-            self.bias.data.zero_()
-        # Create an implicit residual via identity initialization
-        w = self.weight.data
-        torch.nn.init.dirac_(w[: w.size(1)])
-
-
 class ConvGroup(nn.Module):
     def __init__(self, channels_in, channels_out, batchnorm_momentum):
         super().__init__()
-        self.conv1 = Conv(channels_in, channels_out)
+        self.conv1 = nn.Conv2d(channels_in, channels_out, kernel_size=3, padding="same", bias=False)
         self.pool = nn.MaxPool2d(2)
         self.norm1 = nn.BatchNorm2d(channels_out)
-        self.conv2 = Conv(channels_out, channels_out)
+        self.conv2 = nn.Conv2d(channels_out, channels_out, kernel_size=3, padding="same", bias=False)
         self.norm2 = nn.BatchNorm2d(channels_out)
         self.activ = nn.GELU()
 
@@ -132,7 +111,7 @@ class KellerNet(nn.Module):
         whiten_kernel_size = 2
         whiten_width = 2 * 3 * whiten_kernel_size**2
         net = nn.Sequential(
-            Conv(3, whiten_width, whiten_kernel_size, padding=0, bias=True),
+            nn.Conv2d(3, whiten_width, whiten_kernel_size, padding=0, bias=True),
             nn.GELU(),
             ConvGroup(whiten_width, widths["block1"], batchnorm_momentum),
             ConvGroup(widths["block1"], widths["block2"], batchnorm_momentum),
