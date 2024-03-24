@@ -203,7 +203,5 @@ mean_accuracy = torch.mean(accuracies, axis=0)
 std_accuracy = torch.std(accuracies, axis=0)
 
 print("\nAccuracy Statistics:")
-print(f"{'Epoch':>10}{'Mean Accuracy (%)':>20}{'Std Deviation':>20}")
-print(f"{'-'*10:>10}{'-'*20:>20}{'-'*20:>20}")
 for i in range(len(mean_accuracy)):
-    print(f"{i+1:10}{mean_accuracy[i]*100:19.2f}% +/- {std_accuracy[i]*100:.2f}")
+    print(f"{i+1:2}: {mean_accuracy[i]*100:19.2f}% +/- {std_accuracy[i]*100:.2f}")
