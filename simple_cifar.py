@@ -158,6 +158,16 @@ class KellerNet(nn.Module):
 
     def get_optimizers(self):
         batch_size = hyp["opt"]["batch_size"]
+        epochs = hyp["opt"]["train_epochs"]
+        momentum = hyp["opt"]["momentum"]
+        # Assuming  gradients are constant in time, for Nesterov momentum, the below ratio is how much
+        # larger the default steps will be than the underlying per-example gradients. We divide the
+        # learning rate by this ratio in order to ensure steps are the same scale as gradients, regardless
+        # of the choice of momentum.
+        kilostep_scale = 1024 * (1 + 1 / (1 - momentum))
+        lr = hyp["opt"]["lr"] / kilostep_scale  # un-decoupled learning rate for PyTorch SGD
+        wd = hyp["opt"]["weight_decay"] * batch_size / kilostep_scale
+        lr_biases = lr * hyp["opt"]["bias_scaler"]
 
         def triangle(steps, start=0, end=0, peak=0.5):
             xp = torch.tensor([0, int(peak * steps), steps])
@@ -169,16 +179,13 @@ class KellerNet(nn.Module):
             indices = torch.clamp(indices, 0, len(m) - 1)
             return m[indices] * x + b[indices]
 
-        total_train_steps = 50_000 * 5
+        total_train_steps = 50000 * epochs // batch_size
         lr_schedule = triangle(total_train_steps, start=0.2, end=0.07, peak=0.23)
-        momentum = hyp["opt"]["momentum"]
-        kilostep_scale = 1024 * (1 + 1 / (1 - momentum))
-        lr = hyp["opt"]["lr"] / kilostep_scale  # un-decoupled learning rate for PyTorch SGD
-        wd = hyp["opt"]["weight_decay"] * batch_size / kilostep_scale
-        lr_biases = lr * hyp["opt"]["bias_scaler"]
 
-        norm_biases = [p for k, p in self.named_parameters() if "norm" in k and p.requires_grad]
-        other_params = [p for k, p in self.named_parameters() if "norm" not in k and p.requires_grad]
+        model = make_net()
+
+        norm_biases = [p for k, p in model.named_parameters() if "norm" in k and p.requires_grad]
+        other_params = [p for k, p in model.named_parameters() if "norm" not in k and p.requires_grad]
         param_configs = [
             dict(params=norm_biases, lr=lr_biases, weight_decay=wd / lr_biases),
             dict(params=other_params, lr=lr, weight_decay=wd / lr),
