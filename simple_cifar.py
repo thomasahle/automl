@@ -224,7 +224,9 @@ def main(
     print(f"{'-'*5:>5}{'-'*25:>25}{'-'*25:>25}")
     for i in range(len(mean_accuracy)):
         print(
-            f"{i+1:5}{mean_train_loss[i]:15.4f} +/- {std_train_loss[i]:.4f}{mean_accuracy[i]*100:6.2f} +/- {std_accuracy[i]*100:5.2f}%"
+            f"{i+1:5}"
+            f"{mean_train_loss[i]:13.4f} +/- {std_train_loss[i]:.4f}"
+            f"{mean_accuracy[i]*100:12.2f} +/- {std_accuracy[i]*100:5.2f}%"
         )
 
 
