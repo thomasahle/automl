@@ -88,6 +88,7 @@ def train(model, train_inputs, train_labels, time_limit):
         starter.record()
         model.train()
 
+        approx_time = time.time()
         train_loss = 0.0
         for i in range(0, len(train_inputs), batch_size):
             optimizer.zero_grad()
@@ -97,8 +98,7 @@ def train(model, train_inputs, train_labels, time_limit):
             optimizer.step()
             n_items += len(train_inputs[i : i + batch_size])
             train_loss += loss.item()
-            ender.record()  # No sync here, since it's too expensive
-            if total_time_seconds + 1e-3 * starter.elapsed_time(ender) >= time_limit:
+            if total_time_seconds + time.time() - approx_time >= time_limit:
                 break
         scheduler.step()
 
