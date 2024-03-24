@@ -71,7 +71,7 @@ class KellerNet(nn.Module):
         return optimizer, scheduler, loss_fn, batch_size
 
 
-def train(model, train_inputs, train_labels, time_limit):
+def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limit):
     optimizer, scheduler, criterion, batch_size = model.get_optimizers()
 
     print(f"{'Epoch':>10}{'Train Loss':>13}{'Test Acc':>13}{'Time':>10}")
@@ -190,13 +190,13 @@ net = KellerNet().to(torch.bfloat16).to(device).to(memory_format=torch.channels_
 accuracies = []
 for i in range(3):
     print(f"\nRun {i+1}:")
-    results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=10)
+    results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=5)
     accuracies.append([result[2] for result in results])
 
 # Compute the standard deviation of the accuracy
-accuracies = np.array(accuracies)
-mean_accuracy = np.mean(accuracies, axis=0)
-std_accuracy = np.std(accuracies, axis=0)
+accuracies = torch.tensor(accuracies)
+mean_accuracy = torch.mean(accuracies, axis=0)
+std_accuracy = torch.std(accuracies, axis=0)
 
 print("\nAccuracy Statistics:")
 print(f"{'Epoch':>10}{'Mean Accuracy (%)':>20}{'Std Deviation':>20}")
