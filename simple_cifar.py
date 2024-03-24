@@ -34,99 +34,41 @@ class Net(nn.Module):
 
 ## KellerNet
 
-hyp = {
-    "opt": {
-        "train_epochs": 9.9,
-        "batch_size": 1024,
-        "lr": 11.5,  # learning rate per 1024 examples
-        "momentum": 0.85,
-        "weight_decay": 0.0153,  # weight decay per 1024 examples (decoupled from learning rate)
-        "bias_scaler": 64.0,  # scales up learning rate (but not weight decay) for BatchNorm biases
-        "label_smoothing": 0.2,
-        "ema": {
-            "start_epochs": 3,
-            "decay_base": 0.95,
-            "decay_pow": 3.0,
-            "every_n_steps": 5,
-        },
-        "whiten_bias_epochs": 3,  # how many epochs to train the whitening layer bias before freezing
-    },
-    "aug": {
-        "flip": True,
-        "translate": 2,
-    },
-    "net": {
-        "widths": {
-            "block1": 64,
-            "block2": 256,
-            "block3": 256,
-        },
-        "batchnorm_momentum": 0.6,
-        "scaling_factor": 1 / 9,
-        "tta_level": 2,  # the level of test-time augmentation: 0=none, 1=mirror, 2=mirror+translate
-    },
-}
-
-
-class Mul(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
-
-
-class ConvGroup(nn.Module):
-    def __init__(self, channels_in, channels_out, batchnorm_momentum):
-        super().__init__()
-        self.conv1 = nn.Conv2d(channels_in, channels_out, kernel_size=3, padding="same", bias=False)
-        self.pool = nn.MaxPool2d(2)
-        self.norm1 = nn.BatchNorm2d(channels_out)
-        self.conv2 = nn.Conv2d(channels_out, channels_out, kernel_size=3, padding="same", bias=False)
-        self.norm2 = nn.BatchNorm2d(channels_out)
-        self.activ = nn.GELU()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.pool(x)
-        x = self.norm1(x)
-        x = self.activ(x)
-        x = self.conv2(x)
-        x = self.norm2(x)
-        x = self.activ(x)
-        return x
-
 
 class KellerNet(nn.Module):
     def __init__(self):
         super().__init__()
-        widths = hyp["net"]["widths"]
-        batchnorm_momentum = hyp["net"]["batchnorm_momentum"]
-        whiten_kernel_size = 2
-        whiten_width = 2 * 3 * whiten_kernel_size**2
         net = nn.Sequential(
-            nn.Conv2d(3, whiten_width, whiten_kernel_size, padding=0, bias=True),
+            nn.Conv2d(3, 24, 2, padding=0, bias=True),
             nn.GELU(),
-            ConvGroup(whiten_width, widths["block1"], batchnorm_momentum),
-            ConvGroup(widths["block1"], widths["block2"], batchnorm_momentum),
-            ConvGroup(widths["block2"], widths["block3"], batchnorm_momentum),
+            self.make_conv_group(24, 64),
+            self.make_conv_group(64, 256),
+            self.make_conv_group(256, 256),
             nn.MaxPool2d(3),
             nn.Flatten(),
-            nn.Linear(widths["block3"], 10, bias=False),
-            Mul(1 / 9),
+            nn.Linear(256, 10, bias=False),
         )
-        net = net.half().cuda()
+        net = net.to(float.bfloat16).cuda()
         net = net.to(memory_format=torch.channels_last)
         self.net = net
 
+    def make_conv_group(self, channels_in, channels_out):
+        return nn.Sequential(
+            nn.Conv2d(channels_in, channels_out, kernel_size=3, padding="same", bias=False),
+            nn.MaxPool2d(2),
+            nn.BatchNorm2d(channels_out),
+            nn.GELU(),
+            nn.Conv2d(channels_out, channels_out, kernel_size=3, padding="same", bias=False),
+            nn.BatchNorm2d(channels_out),
+            nn.GELU(),
+        )
+
     def forward(self, x):
-        return self.net(x)
+        return self.net(x) / 9
 
     def get_optimizers(self):
         batch_size = 1024
-        optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4, fused=True)
-        # optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
+        optimizer = optim.Adam(self.parameters(), lr=0.01, fused=True)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         return optimizer, scheduler, batch_size
 
