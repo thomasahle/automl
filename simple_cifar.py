@@ -74,7 +74,7 @@ class KellerNet(nn.Module):
 def train(model, train_inputs, train_labels, time_limit):
     optimizer, scheduler, criterion, batch_size = model.get_optimizers()
 
-    print(f"{'Epoch':>10}{'Train Loss':>13}{'Accuracy':>13}{'Time':>10}")
+    print(f"{'Epoch':>10}{'Train Loss':>13}{'Test Acc':>13}{'Time':>10}")
     print(f"{'-'*10}{'-'*13}{'-'*13}{'-'*10}")
 
     total_time_seconds = 0
@@ -154,7 +154,6 @@ def make_data(device):
 
     train_inputs = batch_normalize_images(train_inputs)
     test_inputs = batch_normalize_images(test_inputs)
-    print(f"{train_inputs.shape=}, {train_labels.shape=}, {test_inputs.shape=}, {test_labels.shape=}")
 
     return (
         train_inputs.to(torch.bfloat16).to(device),
