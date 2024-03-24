@@ -140,7 +140,6 @@ def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchno
     )
     net[0].weight.requires_grad = False
     net = net.half().cuda()
-    # net = net.cuda()
     net = net.to(memory_format=torch.channels_last)
     for mod in net.modules():
         if isinstance(mod, BatchNorm):
@@ -157,48 +156,9 @@ class KellerNet(nn.Module):
         return self.net(x)
 
     def get_optimizers(self):
-        batch_size = hyp["opt"]["batch_size"]
-        epochs = hyp["opt"]["train_epochs"]
-        momentum = hyp["opt"]["momentum"]
-        # Assuming  gradients are constant in time, for Nesterov momentum, the below ratio is how much
-        # larger the default steps will be than the underlying per-example gradients. We divide the
-        # learning rate by this ratio in order to ensure steps are the same scale as gradients, regardless
-        # of the choice of momentum.
-        kilostep_scale = 1024 * (1 + 1 / (1 - momentum))
-        lr = hyp["opt"]["lr"] / kilostep_scale  # un-decoupled learning rate for PyTorch SGD
-        wd = hyp["opt"]["weight_decay"] * batch_size / kilostep_scale
-        lr_biases = lr * hyp["opt"]["bias_scaler"]
-
-        def triangle(steps, start=0, end=0, peak=0.5):
-            xp = torch.tensor([0, int(peak * steps), steps])
-            fp = torch.tensor([start, 1, end])
-            x = torch.arange(1 + steps)
-            m = (fp[1:] - fp[:-1]) / (xp[1:] - xp[:-1])
-            b = fp[:-1] - (m * xp[:-1])
-            indices = torch.sum(torch.ge(x[:, None], xp[None, :]), 1) - 1
-            indices = torch.clamp(indices, 0, len(m) - 1)
-            return m[indices] * x + b[indices]
-
-        total_train_steps = 50000 * epochs // batch_size
-        lr_schedule = triangle(total_train_steps, start=0.2, end=0.07, peak=0.23)
-
-        model = make_net()
-
-        norm_biases = [p for k, p in model.named_parameters() if "norm" in k and p.requires_grad]
-        other_params = [p for k, p in model.named_parameters() if "norm" not in k and p.requires_grad]
-        param_configs = [
-            dict(params=norm_biases, lr=lr_biases, weight_decay=wd / lr_biases),
-            dict(params=other_params, lr=lr, weight_decay=wd / lr),
-        ]
-        optimizer = torch.optim.SGD(param_configs, momentum=momentum, nesterov=True)
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: lr_schedule[i])
-        return optimizer, scheduler, batch_size
-
-    def get_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4)
-        # optimizer = torch.optim.SGD(self.parameters(), lr=1e-2, momentum=0.85, nesterov=True)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
         batch_size = 512
+        optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         return optimizer, scheduler, batch_size
 
 
