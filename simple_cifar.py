@@ -139,7 +139,8 @@ class KellerNet(nn.Module):
         return optimizer, scheduler, batch_size
 
     def get_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        # optimizer = optim.Adam(self.parameters(), lr=0.001)
+        optimizer = torch.optim.SGD(self.parameters(), momentum=0.85, nesterov=True)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
         batch_size = 512
         return optimizer, scheduler, batch_size
@@ -241,10 +242,10 @@ net = KellerNet().to(device)
 
 print("Compiling model...")
 # net = torch.compile(net)
-net = torch.compile(net, mode="max-autotune")
-print("Warmup...")
-for _ in range(5):
-    train(net, train_inputs, train_labels, time_limit=1)
+# net = torch.compile(net, mode="max-autotune")
+# print("Warmup...")
+# for _ in range(5):
+#     train(net, train_inputs, train_labels, time_limit=1)
 start_time = time.time()
 print("Start training...")
 n_items = train(net, train_inputs, train_labels, time_limit=5)
