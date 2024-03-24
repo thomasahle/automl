@@ -139,8 +139,8 @@ def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchno
         Mul(hyp["net"]["scaling_factor"]),
     )
     net[0].weight.requires_grad = False
-    # net = net.half().cuda()
-    net = net.cuda()
+    net = net.half().cuda()
+    # net = net.cuda()
     net = net.to(memory_format=torch.channels_last)
     for mod in net.modules():
         if isinstance(mod, BatchNorm):
@@ -187,7 +187,7 @@ class KellerNet(nn.Module):
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: lr_schedule[i])
         return optimizer, scheduler, batch_size
 
-    def get_optimizers(self):
+    def get_optimizers_(self):
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         # optimizer = torch.optim.SGD(self.parameters(), lr=1e-2, momentum=0.85, nesterov=True)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
