@@ -278,7 +278,7 @@ print(
 print("Creating model...")
 net = KellerNet().to(device)
 
-# train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
+train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
 
 # train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
 # train_labels, test_labels = train_labels.long(), test_labels.long()
