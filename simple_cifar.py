@@ -187,7 +187,7 @@ def train(model, train_inputs, train_labels, time_limit):
 def make_data(device):
     transform = transforms.Compose(
         [
-            # transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(),
             # transforms.RandomCrop(32, padding=4),
             # transforms.RandomRotation(10, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.ToTensor(),
@@ -199,7 +199,7 @@ def make_data(device):
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     test_inputs, test_labels = next(iter(testdata))
     train_inputs, train_labels = [], []
-    for _ in range(1):
+    for _ in range(2):
         ti, tl = next(iter(traindata))
         train_inputs.append(ti)
         train_labels.append(tl)
