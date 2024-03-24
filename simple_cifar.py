@@ -82,6 +82,14 @@ class Mul(nn.Module):
         return x * self.scale
 
 
+class BatchNorm(nn.BatchNorm2d):
+    def __init__(self, num_features, momentum, eps=1e-12, weight=False, bias=True):
+        super().__init__(num_features, eps=eps, momentum=1 - momentum)
+        self.weight.requires_grad = weight
+        self.bias.requires_grad = bias
+        # Note that PyTorch already initializes the weights to one and bias to zero
+
+
 class Conv(nn.Conv2d):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding="same", bias=False):
         super().__init__(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=bias)
@@ -100,9 +108,9 @@ class ConvGroup(nn.Module):
         super().__init__()
         self.conv1 = Conv(channels_in, channels_out)
         self.pool = nn.MaxPool2d(2)
-        self.norm1 = nn.BatchNorm2d(channels_out)
+        self.norm1 = BatchNorm(channels_out)
         self.conv2 = Conv(channels_out, channels_out)
-        self.norm2 = nn.BatchNorm2d(channels_out)
+        self.norm2 = BatchNorm(channels_out)
         self.activ = nn.GELU()
 
     def forward(self, x):
@@ -122,9 +130,9 @@ class KellerNet(nn.Module):
         net = nn.Sequential(
             Conv(3, 64, 3, padding=1),
             nn.GELU(),
-            ConvGroup(64, 256),
-            ConvGroup(256, 256),
-            ConvGroup(256, 256),
+            ConvGroup(64, 256, 0.6),
+            ConvGroup(256, 256, 0.6),
+            ConvGroup(256, 256, 0.6),
             nn.MaxPool2d(3),
             Flatten(),
             nn.Linear(256, 10, bias=False),
@@ -132,6 +140,9 @@ class KellerNet(nn.Module):
         )
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
+        for mod in net.modules():
+            if isinstance(mod, BatchNorm):
+                mod.float()
         self.net = net
 
     def forward(self, x):
