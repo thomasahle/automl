@@ -74,8 +74,8 @@ class KellerNet(nn.Module):
 def train(model, train_inputs, train_labels, time_limit):
     optimizer, scheduler, criterion, batch_size = model.get_optimizers()
 
-    print(f"{'Epoch':<10}{'Train Loss':<15}{'Accuracy':<15}{'Time':<10}")
-    print(f"{'-'*10:<10}{'-'*15:<15}{'-'*10:<10}{'-'*10:<10}")
+    print(f"{'Epoch':10}{'Train Loss':15}{'Accuracy':15}{'Time':10}")
+    print(f"{'-'*10:10}{'-'*15:15}{'-'*10:10}{'-'*10:10}")
 
     total_time_seconds = 0
     starter = torch.cuda.Event(enable_timing=True)
