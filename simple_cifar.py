@@ -139,7 +139,8 @@ def make_net(widths=hyp["net"]["widths"], batchnorm_momentum=hyp["net"]["batchno
         Mul(hyp["net"]["scaling_factor"]),
     )
     net[0].weight.requires_grad = False
-    net = net.half().cuda()
+    # net = net.half().cuda()
+    net = net.cuda()
     net = net.to(memory_format=torch.channels_last)
     for mod in net.modules():
         if isinstance(mod, BatchNorm):
@@ -277,7 +278,8 @@ print(
 print("Creating model...")
 net = KellerNet().to(device)
 
-train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
+# train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
+
 # train_inputs, test_inputs, net = train_inputs.half(), test_inputs.half(), net.half()
 # train_labels, test_labels = train_labels.long(), test_labels.long()
 # for layer in net.children():
@@ -293,8 +295,8 @@ train_inputs, test_inputs = train_inputs.half(), test_inputs.half()
 # net = torch.compile(net)
 # net = torch.compile(net, mode="max-autotune")
 # print("Warmup...")
-for _ in range(3):
-    train(net, train_inputs, train_labels, time_limit=1)
+# for _ in range(3):
+#    train(net, train_inputs, train_labels, time_limit=1)
 start_time = time.time()
 print("Start training...")
 n_items = train(net, train_inputs, train_labels, time_limit=5)
