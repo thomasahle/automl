@@ -144,17 +144,15 @@ class KellerNet(nn.Module):
         )
         net = net.half().cuda()
         net = net.to(memory_format=torch.channels_last)
-        for mod in net.modules():
-            if isinstance(mod, BatchNorm):
-                mod.float()
         self.net = net
 
     def forward(self, x):
         return self.net(x)
 
     def get_optimizers(self):
-        batch_size = 512
-        optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4)
+        batch_size = 1024
+        # optimizer = optim.Adam(self.parameters(), lr=0.001, eps=1e-4)
+        optimizer = optim.SGD(self.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         return optimizer, scheduler, batch_size
 
