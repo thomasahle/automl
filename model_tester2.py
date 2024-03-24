@@ -13,6 +13,25 @@ from argparse import Namespace
 from data import DataModule
 
 
+def worker(args, input_queue, output_queue):
+    # TODO: Set up data
+
+    p = None
+
+    while True:
+        pidx, program = input_queue.get()
+
+        if p is None:
+            p = multiprocessing.Process(
+                target=compute_accuracy_worker,
+                args=(code, args, result_queue, memory_limit_bytes, test_run),
+            )
+
+        print(f"Worker {worker_idx} testing program {pidx}. Queue size: {qsize}")
+        score, n_examples, n_epochs = compute_accuracy(program, args)
+        output_queue.put((pidx, score, n_examples, n_epochs))
+
+
 class ExceptionInfo:
     def __init__(self, exc):
         self.exc = exc
@@ -28,6 +47,8 @@ class ExceptionInfo:
 
 
 # Computes the accuracy of the model in a separate process, with resource limits
+# We have to just spin off a new process every time. Even though it would be nice
+# to keep the process alive, it's not worth the effort.
 def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_bytes=2**25):
     result_queue = multiprocessing.Queue()
     assert isinstance(code, str)
@@ -61,18 +82,6 @@ def compute_accuracy(code: str, args: Namespace, test_run=False, memory_limit_by
     else:
         print("Warning: The process did not return any result.")
         return 0, 0, 0
-
-
-# We define the test-step outside of the MNISTModel, so the LM can't cheat
-def test_step(self, batch, batch_idx):
-    x, y = batch
-    y_hat = self(x)
-    loss = F.cross_entropy(y_hat, y)
-    preds = y_hat.argmax(dim=1)
-    acc = (preds == y).float().mean()
-    metrics = {"test_loss": loss, "test_acc": acc}
-    self.log_dict(metrics)
-    return metrics
 
 
 # This is totally unsafe. Run at your own risk.

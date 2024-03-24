@@ -208,9 +208,9 @@ mean_train_loss = torch.mean(train_losses, axis=0)
 std_train_loss = torch.std(train_losses, axis=0)
 
 print("\nTraining Statistics:")
-print(f"{'Epoch':>5}{'Mean Accuracy (%)':>20}{'Accuracy Std Dev':>20}{'Mean Train Loss':>20}{'Train Loss Std Dev':>20}")
-print(f"{'-'*5:>5}{'-'*20:>20}{'-'*20:>20}{'-'*20:>20}{'-'*20:>20}")
+print(f"{'Epoch':>5}{'Train Loss':>25}{'Accuracy (%)':>25}")
+print(f"{'-'*5:>5}{'-'*25:>25}{'-'*25:>25}")
 for i in range(len(mean_accuracy)):
     print(
-        f"{i+1:5}{mean_accuracy[i]*100:20.2f}{std_accuracy[i]*100:20.2f}{mean_train_loss[i]:20.4f}{std_train_loss[i]:20.4f}"
+        f"{i+1:5}{mean_train_loss[i]:15.4f} +/- {std_train_loss[i]:.4f}{mean_accuracy[i]*100:6.2f} +/- {std_accuracy[i]*100:5.2f}%"
     )
