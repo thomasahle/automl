@@ -48,6 +48,7 @@ class KellerNet(nn.Module):
             nn.Flatten(),
             nn.Linear(256, 10, bias=False),
         )
+        self.init_weights()
 
     def make_conv_group(self, channels_in, channels_out):
         return nn.Sequential(
@@ -59,6 +60,15 @@ class KellerNet(nn.Module):
             nn.BatchNorm2d(channels_out),
             nn.GELU(),
         )
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.orthogonal_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight)
 
     def forward(self, x):
         return self.net(x) / 9
