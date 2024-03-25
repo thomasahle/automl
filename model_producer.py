@@ -3,6 +3,7 @@ import re
 import dspy
 import textwrap
 import pydantic
+import time
 
 import model_tester2
 import cifar_runner
@@ -200,7 +201,8 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
             used_demo_subsets.add(key)
             break
     else:
-        # We've tried all subsets. Wait for a new demo.
+        print("We've tried all subsets. Wait for a new demo.")
+        time.sleep(1)
         return None
 
     # Flip to keep the best at the bottom
