@@ -53,7 +53,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
             print("Kill complete.")
     else:
         if args.verbose:
-            print(f"Process finished naturally after {time.time() - start_time:.2}s.")
+            print(f"Process finished naturally after {time.time() - start_time:.2f}s.")
 
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.

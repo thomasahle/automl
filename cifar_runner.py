@@ -1,4 +1,5 @@
 import argparse
+import math
 import torchvision
 import torchvision.transforms as transforms
 import time
@@ -276,9 +277,7 @@ def main(
 
     acc = mean_accuracy[-1].item()
     std = std_accuracy[-1].item()
-    if std.is_nan():
-        std = 0
-    return acc, std
+    return acc, 0 if math.isnan(std) else std
 
 
 if __name__ == "__main__":
