@@ -49,19 +49,27 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if args.verbose:
             print("Kill complete.")
 
-    # Check if the process returned any result. If not, presumably it was killed.
-    if not parent_conn.poll():
+    try:
+        # Check if the process returned any result. If not, presumably it was killed.
+        if not parent_conn.poll():
+            result = {
+                "traceback": "",
+                "error": TimeoutError("The process did not return any result."),
+                "result": (0, 0),
+            }
+        # Otherwise get normal result
+        else:
+            result = parent_conn.recv()
+    except FileNotFoundError as e:
+        if args.verbose:
+            print(f"Unable to read from parent_connection? {e}")
         result = {
-            "traceback": "",
-            "error": TimeoutError("The process did not return any result."),
+            "traceback": traceback.format_exc(),
+            "error": e,
             "result": (0, 0),
         }
-
-    # Otherwise get normal result
-    else:
-        result = parent_conn.recv()
-
-    parent_conn.close()
+    finally:
+        parent_conn.close()
 
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.
