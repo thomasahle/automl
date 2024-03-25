@@ -32,7 +32,7 @@ def check_program(args, v):
     #         "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
     #     )
     if "def get_optimizers(self):" not in v:
-        raise ValueError("Remember to define a get_optimizers method")
+        raise ValueError("Remember to define a `def get_optimizers(self)` method in Net")
     try:
         # Attempt to compile the code snippet
         compile(v, "<string>", "exec")
@@ -197,7 +197,15 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
     if not args.best_first:
         subset = subset[::-1]
 
-    proposer.predictor.demos = [demo for i, demo in subset]
+    proposer.predictor.demos = [demo for _i, demo in subset]
+
+    for demo in proposer.predictor.demos:
+        for name in ImproveSignature(args).fields.keys():
+            if not hasattr(demo, name):
+                raise ValueError(f"Demo is missing field {name}")
+
+    assert len(proposer.predictor.demos) > 0
+
     target_score = (max(demo.score for demo in demos) + 1) / 2
     try:
         pred = proposer(score=target_score, personality=personality)
@@ -207,39 +215,3 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         return None
 
     return key, dspy.Example(**pred)
-
-
-def model_producer(
-    args,
-    personality: str,
-    model_queue: queue.Queue,
-    demo_queue: queue.Queue,
-    worker_idx,
-) -> None:
-    make_initial = worker_idx == 0
-
-    used_demo_subsets = set()
-    testing_backlog_size = 0
-    demos = {}
-    while True:
-        while not demo_queue.empty():
-            pidx, demo, testing_backlog_size = demo_queue.get()
-            demos[pidx] = demo
-
-        # If we are getting ahead of the testers, wait for them to catch up
-        if testing_backlog_size > 10:
-            print(f"Worked {worker_idx} waiting for testers to catch up...")
-            pidx, demo, testing_backlog_size = demo_queue.get()
-            demos[pidx] = demo
-
-        if not demos:
-            if make_initial:
-                make_initial = False
-                return make_initial_program(args)
-                continue
-
-            # Wait for the first result
-            pidx, demo, testing_backlog_size = demo_queue.get()
-            demos[pidx] = demo
-
-    print("Model producer stopped.")
