@@ -160,11 +160,13 @@ class ModelEvalWorker:
     def run(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
             while True:
+                if self.program_queue.empty() and self.args.verbose:
+                    print(f"Worker {self.widx} waiting for programs...")
                 program = self.program_queue.get()
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
                 if self.args.verbose:
-                    print(f"Worker {self.widx} got program, {program.program[:1000]}...")
+                    print(f"Worker {self.widx} got program, {program.program[:500]}...")
                 result = model_tester2.run_in_worker(program.program, self.args, test_run=False)
                 # But we can still run the evaluation in parallel, and definitely don't need to
                 # wait for it to finish, before starting the next program on the gpu.
@@ -181,6 +183,9 @@ class ModelEvalWorker:
             return
 
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
+        print("Test dspy")
+        answer = dspy.TypedPredictor("question -> answer")("What is 1+1?").answer
+        print(f"Answer: {answer}")
         print("Asking model to evaluate...")
         thoughts = dspy.TypedPredictor(
             "plan, program, stdout -> thoughts",
