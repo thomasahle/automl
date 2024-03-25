@@ -156,6 +156,7 @@ class ModelEvalWorker:
         self.args = args
         self.program_queue = program_queue
         self.output_queues = output_queues
+        self.predictor = dspy.TypedPredictor("question -> answer")
 
     def run(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -184,8 +185,8 @@ class ModelEvalWorker:
 
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
         print("Test dspy")
-        answer = dspy.TypedPredictor("question -> answer")("What is 1+1?").answer
-        print(f"Answer: {answer}")
+        # answer = dspy.TypedPredictor("question -> answer")("What is 1+1?").answer
+        print(f"Answer: {self.predictor("What is 1+1?").answer}")
         print("Asking model to evaluate...")
         thoughts = dspy.TypedPredictor(
             "plan, program, stdout -> thoughts",
