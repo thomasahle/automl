@@ -78,6 +78,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if parent_conn.poll():
             result = parent_conn.recv()
     except FileNotFoundError as e:
+        print(traceback.format_exc())
         if args.verbose:
             print(f"Error: {e}. (Timeout?)")
     if result is None:
@@ -95,7 +96,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if test_run:
             raise result["error"]
         if args.verbose:
-            print(f"Warning: The process failed with excetion {result['error']}.")
+            print(f"Warning: The process failed with error '{result['error']}'.")
 
     return result
 
