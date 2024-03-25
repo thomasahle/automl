@@ -91,6 +91,7 @@ def main():
     # the main thread, so we can keep track of how many programs we've evaluated so far.
     for pidx in range(100):
         example = eval_queue.get()
+        print("Main Got example:", example)
         write_example_to_file(pidx, example, output_folder)
 
 
