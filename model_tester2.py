@@ -37,6 +37,12 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     )
     p.start()
 
+    # It is idiomatic for working with pipes to close unused ends.
+    # child_conn.close() in the parent doesn't mean that child should close its end immediately
+    # parent_conn.recv doesn't return as long as there is a chance that somebody will child_conn.send().
+    # If child_conn is opened (in child or parent) then there is a chance
+    child_conn.close()
+
     # We give the process some extra time to finish, since there is some overhead in starting the process
     p.join(args.train_time * (1 + args.n_runs) + 10)
 
