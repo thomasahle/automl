@@ -42,11 +42,15 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
     if p.is_alive():
         # If the process is still alive after time_limit_sec, terminate it
+        if args.verbose:
+            print("Process timeout. Killing process...")
         p.terminate()
         p.join()
+        if args.verbose:
+            print("Kill complete.")
 
     # Check if the process returned any result. If not, presumably it was killed.
-    if not parent_conn.poll(timeout=0):
+    if not parent_conn.poll():
         result = {
             "traceback": "",
             "error": TimeoutError("The process did not return any result."),
