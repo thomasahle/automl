@@ -45,7 +45,7 @@ def check_program(args, v):
     return v
 
 
-def make_signatures(args, personality):
+def ImproveSignature(args, personality):
     class ImproveSignature(dspy.Signature):
         __doc__ = textwrap.dedent(f"""
         Write a new python lightning class to get the best score on {args.dataset} given
@@ -102,6 +102,10 @@ def make_signatures(args, personality):
             # Actually this doesn't do anything right now in dspy
             return re.sub("Score: [\d\.]+", "", s)
 
+    return ImproveSignature
+
+
+def InitialSignature(args):
     class InitialSignature(dspy.Signature):
         f"""Write a simple python class for training a model for {args.dataset}. Use the template: ```python\n{template}\n```"""
         program: str = dspy.OutputField(
@@ -112,7 +116,72 @@ def make_signatures(args, personality):
         def check_syntax(cls, v):
             return check_program(args, v)
 
-    return ImproveSignature, InitialSignature
+    return InitialSignature
+
+
+def make_initial_program(args):
+    if args.from_scratch:
+        print("Making initial program...")
+        initial_proposer = dspy.TypedPredictor(
+            InitialSignature(args), explain_errors=True, max_retries=args.max_retries
+        )
+        try:
+            pred = initial_proposer()
+        except ValueError as e:
+            dspy.settings.lm.inspect_history(n=1)
+            print(f"Worker failed: {e}")
+            return None
+        print("Success!")
+        program = pred.program
+
+    else:
+        if args.dataset == "mnist":
+            program = default_progs.mnist
+        elif args.dataset == "cifar10":
+            program = default_progs.cifar
+        else:
+            raise ValueError(f"Unsupported dataset: {args.dataset}")
+
+    return dspy.Example(
+        analysis="No previous models to analyze",
+        # plan="Use a simple model to get a baseline accuracy.",
+        program=program,
+        explanation="This is the first model.",
+    )
+
+
+def make_from_demos(args, personality, demos, used_demo_subsets):
+    proposer = dspy.TypedPredictor(
+        ImproveSignature(args, personality),
+        explain_errors=True,
+        max_retries=args.max_retries,
+    )
+
+    best = sorted(demos.items(), key=lambda x: x[1].score, reverse=True)
+    # Find a subset we havne't tried yet
+    max_examples = min(args.max_examples, len(best))
+    for subset in itertools.combinations(best, max_examples):
+        key = tuple(sorted(x[0] for x in subset))
+        if key not in used_demo_subsets:
+            used_demo_subsets.add(key)
+            break
+    else:
+        # We've tried all subsets. Wait for a new demo.
+        return None
+
+    # Flip to keep the best at the bottom
+    if not args.best_first:
+        subset = subset[::-1]
+
+    proposer.predictor.demos = [demo for i, demo in subset]
+    target_score = (max(demo.score for demo in demos.values()) + 1) / 2
+    try:
+        pred = proposer(score=target_score)
+    except ValueError as e:
+        dspy.settings.lm.inspect_history(n=1)
+        return None
+
+    return key, dspy.Example(**pred)
 
 
 def model_producer(
@@ -123,9 +192,6 @@ def model_producer(
     worker_idx,
 ) -> None:
     make_initial = worker_idx == 0
-
-    ImproveSignature, InitialSignature = make_signatures(args, personality)
-    proposer = dspy.TypedPredictor(ImproveSignature, explain_errors=True, max_retries=args.max_retries)
 
     used_demo_subsets = set()
     testing_backlog_size = 0
@@ -143,72 +209,12 @@ def model_producer(
 
         if not demos:
             if make_initial:
-                if args.from_scratch:
-                    print(f"Making initial program from {worker_idx}...")
-                    initial_proposer = dspy.TypedPredictor(
-                        InitialSignature, explain_errors=True, max_retries=args.max_retries
-                    )
-                    try:
-                        pred = initial_proposer()
-                    except ValueError as e:
-                        dspy.settings.lm.inspect_history(n=1)
-                        print(f"Worked {worker_idx} failed: {e}")
-                        continue
-                    print(f"Success! {worker_idx}")
-                    program = pred.program
-                else:
-                    if args.dataset == "mnist":
-                        program = default_progs.mnist
-                    elif args.dataset == "cifar10":
-                        program = default_progs.cifar
-                    else:
-                        raise ValueError(f"Unsupported dataset: {args.dataset}")
-                model_queue.put(
-                    (
-                        worker_idx,
-                        dspy.Example(
-                            analysis="No previous models to analyze",
-                            # plan="Use a simple model to get a baseline accuracy.",
-                            program=program,
-                            explanation="This is the first model.",
-                        ),
-                    )
-                )
                 make_initial = False
+                return make_initial_program(args)
                 continue
 
             # Wait for the first result
             pidx, demo, testing_backlog_size = demo_queue.get()
             demos[pidx] = demo
 
-        best = sorted(demos.items(), key=lambda x: x[1].score, reverse=True)
-        # Find a subset we havne't tried yet
-        max_examples = min(args.max_examples, len(best))
-        for subset in itertools.combinations(best, max_examples):
-            key = tuple(sorted(x[0] for x in subset))
-            if key not in used_demo_subsets:
-                used_demo_subsets.add(key)
-                break
-        else:
-            # We've tried all subsets. Wait for a new demo.
-            pidx, demo, testing_backlog_size = demo_queue.get()
-            demos[pidx] = demo
-            continue
-
-        # Flip to keep the best at the bottom
-        if not args.best_first:
-            subset = subset[::-1]
-
-        proposer.predictor.demos = [demo for i, demo in subset]
-        target_score = (max(demo.score for demo in demos.values()) + 1) / 2
-        print(f"Making program from {worker_idx}...")
-        try:
-            pred = proposer(score=target_score)
-            # pred = proposer()
-        except ValueError as e:
-            dspy.settings.lm.inspect_history(n=1)
-            print(f"Worked {worker_idx} failed: {e}")
-            continue
-        print(f"Success! {worker_idx}")
-        model_queue.put((worker_idx, dspy.Example(**pred)))
     print("Model producer stopped.")

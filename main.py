@@ -1,12 +1,7 @@
-# import queue
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 from multiprocessing import Queue
 from pathlib import Path
-import queue
-import re
-import select
 import threading
 import dspy
 import torch
@@ -15,9 +10,8 @@ import argparse
 import dotenv
 import os
 
-from model_producer import model_producer, make_model, get_model_parameters
-from model_tester import model_tester, run_code_and_get_class, strip_ticks
-from model_eval import model_eval
+import model_producer
+import model_tester2
 
 
 parser = argparse.ArgumentParser()
@@ -39,10 +33,7 @@ parser.add_argument(
     action="store_true",
     help="If set, the best programs will be at the top of the prompt. Otherwise, they will be at the bottom.",
 )
-args = parser.parse_args()
 
-
-torch.set_float32_matmul_precision("medium")
 
 personalities = [
     "Focus on exploitation: Make small changes to the hyper parameters of the best previous models to make them even better.",
@@ -59,14 +50,9 @@ async def main():
     lm = dspy.OpenAI(model="gpt-4-turbo-preview", max_tokens=4000)
     # lm = dspy.OpenAI(model="gpt-3.5-turbo", max_tokens=4000)
     dspy.settings.configure(lm=lm)
+    args = parser.parse_args()
 
-    model_queue = Queue()
-    demo_queues = [Queue() for _ in range(args.num_producers)]
-    task_queue = Queue()
-    result_queue = Queue()
-    model_eval_to_worker = Queue()
-    model_eval_from_worker = Queue()
-
+    # Ensure we have enough personalities
     if len(personalities) < args.num_producers:
         min_length = args.num_producers - len(personalities)
         personalities.extend(
@@ -76,135 +62,136 @@ async def main():
             )(personalities).more_personalities
         )
 
-    examples = []
-    tasks = set()
-    executor = ThreadPoolExecutor(max_workers=args.num_producers + args.num_testers + args.num_evals)
-    handlers = []
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    output_folder = Path(f"best_programs_{current_time}")
+    output_folder.mkdir(parents=True, exist_ok=True)
 
-    for i, personality in zip(range(args.num_producers), personalities):
-        handlers.append(ModelProducerHandler(args, examples, personality, i))
+    demo_queues = [Queue() for _ in range(args.num_producers)]
+    program_queue = Queue(max_size=10)  # Limit the number of programs we can produce without testing any
+    eval_queue = Queue()
 
-    for i in range(args.num_testers):
-        tasks.add(executor.submit(model_tester, args, task_queue, result_queue, i))
-    
-    for handler in handlers:
-        tasks.add(executor.submit(handler.start))
+    # Each thread/worker has an input queue and a list of output queues
+    threads = [
+        threading.Thread(target=ModelProducerWorker(i, args, personalities[i], demo_queues[i], [program_queue]).run)
+        for i in range(args.num_evals)
+    ]
+    threads.append(
+        threading.Thread(target=ModelEvalWorker(len(threads), args, program_queue, [eval_queue] + demo_queues).run)
+    )
+    for thread in threads:
+        thread.start()
 
-    # eval_threads = [
-    #    threading.Thread(target=model_eval, args=(args, model_eval_to_worker, model_eval_from_worker, i))
-    #    for i in range(args.num_evals)
-    # ]
-    # for t in producer_threads + tester_threads + eval_threads:
-    #    t.start()
-
-    while len(examples) < 100:
-        finished, tasks = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-        for task in finished:
-            handler = task.result()
-            tasks.add(executor.submit(handler.run))
-
-    # TODO: Consider taking a folder of existing programs here to use as a seed
-    # programs = []
-    # examples = []
-    # actual_scores = []
-    # while len(programs) < 100:
-    #     # Wait for one of the queues to become non-empty
-    #     if all(q.empty() for q in demo_queues):
-    #         print("Waiting for workers...")
-    #         # TODO: Consdier spinning up more producer threads here...
-    #     select.select([model_queue._reader, result_queue._reader, model_eval_from_worker._reader], [], [])
-
-    #     # All processing in this loop is fast and non-blocking. The blocking / hard work
-    #     # happens in the workers.
-    #     for input_queue in [model_queue, result_queue, model_eval_from_worker]:
-    #         try:
-    #             value = input_queue.get(block=False)
-    #         except queue.Empty:
-    #             continue
-
-    #         if input_queue is model_queue:
-    #             model_queue_handler(task_queue, programs, value)
-
-    #         elif input_queue is result_queue:
-    #             result_queue_handler(output_folder, demo_queues, task_queue, programs, examples, actual_scores, value)
-
-    #         elif input_queue is model_eval_from_worker:
-    #             eval_queue_handler(model_eval_to_worker, value)
+    # We could have a thread taking care of the eval_queue, but it's useful to do some work in
+    # the main thread, so we can keep track of how many programs we've evaluated so far.
+    for pidx in range(100):
+        example = eval_queue.get()
+        write_example_to_file(pidx, example, output_folder)
 
 
-class ModelProducerHandler:
-    def __init__(self, examples):
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        self.output_folder = Path(f"best_programs_{current_time}")
-        self.output_folder.mkdir(parents=True, exist_ok=True)
-        self.examples = examples
-    
-    async def start(self):
-        pass
+def write_example_to_file(pidx, example, args, output_folder):
+    score = example.accuracy
+    # Save the program, analysis, and score to a text file
+    file_path = output_folder / f"{pidx}_{score:.3f}.txt"
+    with file_path.open("w") as f:
+        print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
+        print(f"Score: {score:.6f}\n", file=f)
+        print(f"Personalitity: {example.personality}", file=f)
+        print(f"Analysis:\n{example.analysis}\n", file=f)
+        print(f"Program:\n{example.program}", file=f)
+        print(f"Stdout:\n{example.stdout}\n", file=f)
+        print(f"Evaluation:\n{example.evaluation}\n", file=f)
 
-    async def handle(self, pidx, pred, score, n_examples, n_epochs):
-        program = pred.program
-        analysis = re.sub("Score: [\d\.]+", "", pred.analysis)
-        print(f"Tested Program {pidx}")
-        print(f"Actual score: {score:.3f}")
-        print([actual_scores)
-        Model = run_code_and_get_class(strip_ticks(program), args.class_name)
-        total_params, _ = get_model_parameters(Model())
-        speed = n_examples / args.train_time
-        explanation = (
-            f"Accuracy: {score:.3f}. "
-            + f"Model with {total_params:,} parameters. "
-            + f"Speed: {speed:.3f} examples per second. "
-            + f"Completed {n_epochs:.3f} epochs."
-        )
-        print(explanation)
-        if score > 0:
-            example = dspy.Example(
-                program=program,
-                analysis=analysis[:100],
-                # plan=pred.plan[:300],
-                score=score,
-                explanation=explanation,
+
+class ModelProducerWorker:
+    def __init__(self, widx, args, personality, demo_queue, output_queues):
+        self.widx = widx
+        self.args = args
+        self.personality = personality
+        self.demo_queue = demo_queue
+        self.output_queues = output_queues
+
+    def run(self):
+        demos = {}
+        used_demo_subsets = set()
+        while True:
+            # Take everything from the queue
+            while not self.demo_queue.empty():
+                pidx, demo = self.demo_queue.get()
+                demos[pidx] = demo
+
+            # If we haven't received any demos, we may need to wait for them
+            if not demos:
+                if self.args.from_scratch or self.widx == 0:
+                    program = model_producer.make_initial_program(self.args)
+                    if program is None:
+                        print("Failed to make initial program.")
+                        continue
+                    for queue in self.output_queues:
+                        queue.put(program)
+                else:
+                    print(f"Worker {self.widx} waiting for demos...")
+                    pidx, demo = self.demo_queue.get()
+                    demos[pidx] = demo
+                continue
+
+            print(f"Making program from {self.widx}...")
+            program = model_producer.make_from_demos(self.args, self.personality, demos)
+            if program is None:
+                print(f"Worker {self.widx} failed to make program.")
+                continue
+            program.personality = self.personality
+
+            for queue in self.output_queues:
+                queue.put(program)
+
+
+class ModelEvalWorker:
+    def __init__(self, widx, args, program_queue, output_queues):
+        self.widx = widx
+        self.args = args
+        self.program_queue = program_queue
+        self.output_queues = output_queues
+
+    def run(self):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            while True:
+                program = self.program_queue.get()
+                # The point is that `run_in_worker` will block and ensure only one gpu-bound
+                # process is running at a time.
+                result = model_tester2.run_in_worker(program, self.args, test_run=False)
+                # But we can still run the evaluation in parallel, and definitely don't need to
+                # wait for it to finish, before starting the next program on the gpu.
+                executor.submit(self.post_process, program, result)
+
+    def post_process(self, program, result):
+        acc, std = result["result"]
+        if acc == std == 0:
+            print(f"Worker {self.widx} failed to evaluate program.")
+            if self.args.verbose:
+                print("Stdout:", result["stdout"])
+                print("Stderr:", result["stderr"])
+                print("Traceback:", result["traceback"])
+            return
+
+        thoughts = dspy.TypedPredictor(
+            "plan, program, stdout -> thoughts",
+            (
+                f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3}."
+                + "Describe what the program did well, and what it could have done better."
+            ),
+        )(program.analysis, program.program, result["stdout"]).thoughts
+        for queue in self.output_queues:
+            queue.put(
+                dspy.Example(
+                    analysis=program.analysis,
+                    program=program.program,
+                    personality=program.personality,
+                    evaluation=thoughts,
+                    stdout=result["stdout"],
+                    accuracy=acc,
+                    std=std,
+                )
             )
-            examples.append(example)
-            for demo_queue in demo_queues:
-                demo_queue.put((pidx, example, get_queue_size(task_queue)))
-        else:
-            print(f"Program {pidx} failed, so not adding to the demo queue.")
-
-        # Save the program, analysis, and score to a text file
-        file_path = output_folder / f"{pidx}_{score:.3f}.txt"
-        with file_path.open("w") as f:
-            print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
-            print(f"Score: {score:.6f}\n", file=f)
-            print(explanation, file=f)
-            print(f"Personalitity: {personalities[widx]}", file=f)
-            print(f"Analysis:\n{analysis}\n", file=f)
-            # print(f"Plan:\n{pred.plan}\n", file=f)
-            print(f"Program:\n{program}", file=f)
-            print(f"Explanation:\n{pred.explanation}\n", file=f)
-
-
-def model_queue_handler(task_queue, programs, value):
-    widx, pred = value
-    program = pred.program
-    # print("Anlysis:", analysis)
-    pidx = len(programs)
-    # print(f"Program ({pidx}):", program)
-    task_queue.put((pidx, widx, program))
-    programs.append(value)
-    print(f"Added new program to queue. Queue size: {get_queue_size(task_queue)}")
-
-
-class ModelEvalHandler:
-    
-def eval_queue_handler(model_eval_to_worker, value):
-    # TODO: This is so annoying having to handle all those threads and queues.
-    # Why can't we just have async / await?
-    # Well, I guess we wanted to limit the amount of parallelism on the predictors...
-    # Sure, but couldn't that still just be a thread pool?
-    model_eval_to_worker.put(value)
-    print(f"Added new program to eval queue. Queue size: {get_queue_size(model_eval_to_worker)}")
 
 
 if __name__ == "__main__":

@@ -130,7 +130,18 @@ def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limi
     return results
 
 
-def make_data(dataset):
+def make_data(dataset, test_run=False):
+    if test_run:
+        if dataset == "mnist":
+            inputs = torch.randn(10000, 1, 28, 28)
+            labels = torch.randint(0, 10, (10000,))
+        elif dataset == "cifar10":
+            inputs = torch.randn(10000, 3, 32, 32)
+            labels = torch.randint(0, 10, (10000,))
+        return inputs[:9000], labels[:9000], inputs[9000:], labels[9000:]
+
+    # We can do some data augmentation here.
+    # But what about test time augmentation?
     transform = transforms.Compose(
         [
             # transforms.RandomHorizontalFlip(),
@@ -139,11 +150,21 @@ def make_data(dataset):
             transforms.ToTensor(),
         ]
     )
-    trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(root="./data", train=False, download=True, transform=transforms.ToTensor())
+    if dataset == "mnist":
+        trainset = torchvision.datasets.MNIST(root="./data", train=True, download=True, transform=transform)
+        testset = torchvision.datasets.MNIST(root="./data", train=False, download=True, transform=transforms.ToTensor())
+    elif dataset == "cifar10":
+        trainset = torchvision.datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
+        testset = torchvision.datasets.CIFAR10(
+            root="./data", train=False, download=True, transform=transforms.ToTensor()
+        )
+    else:
+        raise ValueError(f"Unknown dataset {dataset}")
+
     traindata = torch.utils.data.DataLoader(trainset, batch_size=len(trainset), shuffle=False, num_workers=0)
     testdata = torch.utils.data.DataLoader(testset, batch_size=len(testset), shuffle=False, num_workers=0)
     test_inputs, test_labels = next(iter(testdata))
+
     train_inputs, train_labels = [], []
     for _ in range(1):
         ti, tl = next(iter(traindata))
@@ -152,8 +173,14 @@ def make_data(dataset):
     train_inputs = torch.cat(train_inputs)
     train_labels = torch.cat(train_labels)
 
+    # During evaluation, we use left-right flipping TTA, in which the network is run on both a given test image
+    # and its mirror, and inferences are made based on the average of the two outputs.
+    test_inputs = torch.cat([test_inputs, torch.flip(test_inputs, [3])])
+    test_labels = torch.cat([test_labels, test_labels])
+
     std, mean = torch.std_mean(train_inputs, dim=(0, 2, 3))
 
+    # TODO: Do whitening here?
     def batch_normalize_images(input_images):
         return (input_images - mean.view(1, -1, 1, 1)) / std.view(1, -1, 1, 1)
 
@@ -175,15 +202,17 @@ def main(
     device,
     dataset,
     time_limit=5,
+    test_run=False,
     compile=False,
 ):
     model_class = run_code_and_get_class(program, "Net")
 
     print("Loading data")
     start_time = time.time()
-    train_inputs, train_labels, test_inputs, test_labels = [d.to(device) for d in make_data(dataset)]
-    train_inputs = train_inputs.to(torch.bfloat16)
-    test_inputs = test_inputs.to(torch.bfloat16)
+    train_inputs, train_labels, test_inputs, test_labels = make_data(dataset)
+    train_labels, test_labels = train_labels.to(device), test_labels.to(device)
+    train_inputs = train_inputs.to(torch.bfloat16).to(memory_format=torch.channels_last).to(device)
+    test_inputs = test_inputs.to(torch.bfloat16).to(memory_format=torch.channels_last).to(device)
     print(
         f"Loaded {len(train_inputs)} training and {len(test_inputs)} "
         f"test examples in {time.time() - start_time:.2f} seconds"
@@ -201,6 +230,9 @@ def main(
     print("Warmup...")
     net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
     train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
+
+    if test_run:
+        return 0, 0
 
     accuracies = []
     train_losses = []
@@ -228,6 +260,8 @@ def main(
             f"{mean_train_loss[i]:13.4f} +/- {std_train_loss[i]:.4f}"
             f"{mean_accuracy[i]*100:12.2f} +/- {std_accuracy[i]*100:5.2f}%"
         )
+
+    return mean_accuracy, std_accuracy
 
 
 if __name__ == "__main__":
