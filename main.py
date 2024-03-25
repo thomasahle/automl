@@ -17,7 +17,8 @@ import model_tester2
 
 parser = argparse.ArgumentParser()
 parser.add_argument("dataset", choices=["mnist", "cifar10"])
-parser.add_argument("train_time", type=int, default=3)
+parser.add_argument("train_time", type=int, default=5)
+parser.add_argument("--train-overhead", type=int, default=20, help="Extra time to wait for training program to finish.")
 parser.add_argument("--devices", type=str)
 parser.add_argument("--accelerator", type=str, default="cpu")
 parser.add_argument("--num-producers", type=int, default=2)
