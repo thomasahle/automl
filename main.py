@@ -199,7 +199,6 @@ class ModelEvalWorker:
 
 
 if __name__ == "__main__":
-    # "fork" doesn't work with cuda. Only "spawn" and "forkserver" work.
-    # "spawn" doesn't work with the pipes for stdout/stderr capture.
-    multiprocessing.set_start_method("forkserver")
+    # "fork" doesn't work with cuda.
+    multiprocessing.set_start_method("spawn")
     main()
