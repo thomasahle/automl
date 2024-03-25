@@ -19,7 +19,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
     read_stdout, write_stdout = os.pipe()
     read_stderr, write_stderr = os.pipe()
-    parent_conn, child_conn = multiprocessing.Pipe()
+    parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
     p = multiprocessing.Process(
         target=main_wrapper,
         args=(
@@ -56,6 +56,8 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     # Otherwise get normal result
     else:
         result = parent_conn.recv()
+
+    parent_conn.close()
 
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.
@@ -102,3 +104,4 @@ def main_wrapper(
             "result": result,
         }
     )
+    child_conn.close()
