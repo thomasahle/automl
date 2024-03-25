@@ -117,14 +117,13 @@ class ModelProducerWorker:
         self.program_queue = program_queue
 
     def run(self):
-        demos = {}
+        demos = []
         used_demo_subsets = set()
         make_initial = True
         while True:
             # Take everything from the queue
             while not self.demo_queue.empty():
-                pidx, demo = self.demo_queue.get()
-                demos[pidx] = demo
+                self.demos.append(self.demo_queue.get())
 
             # If we haven't received any demos, we may need to wait for them
             if not demos:
@@ -137,8 +136,7 @@ class ModelProducerWorker:
                     self.program_queue.put(program)
                 else:
                     print(f"Producer Worker {self.widx} waiting for demos...")
-                    pidx, demo = self.demo_queue.get()
-                    demos[pidx] = demo
+                    self.demos.append(self.demo_queue.get())
                 continue
 
             print(f"Making program from {self.widx}...")
@@ -168,7 +166,7 @@ class ModelEvalWorker:
                 program = self.program_queue.get()
                 # test
                 print("putting random shit")
-                self.output_queues[0].put("random shit")
+                self.output_queues[0].put(dspy.Example(shit="random shit"))
                 print("random shit done")
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
