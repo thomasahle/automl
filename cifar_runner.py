@@ -153,7 +153,6 @@ def make_data(dataset, test_run=False):
         return inputs[:9000], labels[:9000], inputs[9000:], labels[9000:]
 
     # We can do some data augmentation here.
-    # But what about test time augmentation?
     transform = transforms.Compose(
         [
             # transforms.RandomHorizontalFlip(),

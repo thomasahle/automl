@@ -41,10 +41,6 @@ def check_program(args, v):
         raise ValueError("Don't import torchvision.models")
     if f"class {args.class_name}" not in v:
         raise ValueError(f"You must define one class named {args.class_name}")
-    # if "self.batch_size" not in v or "self.transform" not in v:
-    #     raise ValueError(
-    #         "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
-    #     )
     if "def get_optimizers(self):" not in v:
         raise ValueError("Remember to define a `def get_optimizers(self)` method in Net")
     try:
@@ -74,7 +70,6 @@ def ImproveSignature(args):
         - Trying diferent architectures
         - Using different activation functions
         - Using different optimizers
-        - Using different data augmentation transformations
         - Using different normalization techniques
         - Using different loss functions
         - Using different learning rate schedules
@@ -88,6 +83,7 @@ def ImproveSignature(args):
         Also take care to:
         - Not use too much memory
         - Make every new program different from the previous ones
+        - Note the program runs with dtype=bfloat16 and memory_format=torch.channels_last
         - Don't import pretrained models
         """)
 
