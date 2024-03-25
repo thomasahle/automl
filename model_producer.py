@@ -182,7 +182,7 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         max_retries=args.max_retries,
     )
 
-    best = sorted(demos.items(), key=lambda x: x[1].score, reverse=True)
+    best = sorted(enumerate(demos), key=lambda x: x[1].score, reverse=True)
     # Find a subset we havne't tried yet
     max_examples = min(args.max_examples, len(best))
     for subset in itertools.combinations(best, max_examples):
@@ -199,7 +199,7 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         subset = subset[::-1]
 
     proposer.predictor.demos = [demo for i, demo in subset]
-    target_score = (max(demo.score for demo in demos.values()) + 1) / 2
+    target_score = (max(demo.score for demo in demos) + 1) / 2
     try:
         pred = proposer(score=target_score)
     except ValueError as e:
