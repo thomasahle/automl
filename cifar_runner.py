@@ -274,7 +274,7 @@ def main(
             f"{mean_accuracy[i]*100:12.2f} +/- {std_accuracy[i]*100:5.2f}%"
         )
 
-    return mean_accuracy, std_accuracy
+    return mean_accuracy[-1].item(), std_accuracy[-1].item()
 
 
 if __name__ == "__main__":
