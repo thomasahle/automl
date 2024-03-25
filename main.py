@@ -144,7 +144,6 @@ class ModelProducerWorker:
             if program is None:
                 print(f"Worker {self.widx} failed to make program.")
                 continue
-            program.personality = self.personality
 
             # TODO: Maybe print something to the console indicating if we are going to sleep
             # while trying to put something in a full queue?

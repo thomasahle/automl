@@ -228,4 +228,4 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         print(f"Worker failed: {e}")
         return None
 
-    return key, dspy.Example(**pred)
+    return dspy.Example(**pred, personality=personality)
