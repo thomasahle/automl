@@ -147,7 +147,8 @@ def main_wrapper(
         {
             "traceback": trace,
             "error": error,
-            "result": (0, 0),
+            # "result": (0, 0),
+            "result": result,
         }
     )
     stdout_conn.close()

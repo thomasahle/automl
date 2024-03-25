@@ -274,7 +274,11 @@ def main(
             f"{mean_accuracy[i]*100:12.2f} +/- {std_accuracy[i]*100:5.2f}%"
         )
 
-    return mean_accuracy[-1].item(), std_accuracy[-1].item()
+    acc = mean_accuracy[-1].item()
+    std = std_accuracy[-1].item()
+    if std.is_nan():
+        std = 0
+    return acc, std
 
 
 if __name__ == "__main__":
