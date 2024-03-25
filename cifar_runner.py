@@ -1,3 +1,4 @@
+import argparse
 import torchvision
 import torchvision.transforms as transforms
 import time
@@ -23,7 +24,7 @@ class Net(nn.Module):
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x))) # 16x16x16
         x = self.pool(F.relu(self.conv2(x))) # 32x8x8
-        x = x.view(-1, 32 * 8 * 8)
+        x = x.reshape(-1, 32 * 8 * 8)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -273,5 +274,11 @@ def main(
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    i = int(sys.argv[1])
-    main(sample_nets[i], device, "cifar10", time_limit=5)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("program", type=int, default=0)
+    parser.add_argument("--test-run", action="store_true")
+    parser.add_argument("--time-limit", type=int, default=5)
+    args = parser.parse_args()
+
+    main(sample_nets[args.program], device, "cifar10", time_limit=args.time_limit, test_run=args.test_run)
