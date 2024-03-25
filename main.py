@@ -91,8 +91,7 @@ def main():
     # the main thread, so we can keep track of how many programs we've evaluated so far.
     for pidx in range(100):
         example = eval_queue.get()
-        print("Main Got example:", example)
-        write_example_to_file(pidx, example, output_folder)
+        write_example_to_file(pidx, example, args, output_folder)
 
 
 def write_example_to_file(pidx, example, args, output_folder):
@@ -166,9 +165,7 @@ class ModelEvalWorker:
                     print(f"Worker {self.widx} waiting for programs...")
                 program = self.program_queue.get()
                 # test
-                print("putting random shit")
-                self.output_queues[0].put(dspy.Example(shit="random shit"))
-                print("random shit done")
+                executor.submit(self.inner, dspy.Example(random="shit"))
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
                 if self.args.verbose:
@@ -177,6 +174,11 @@ class ModelEvalWorker:
                 # But we can still run the evaluation in parallel, and definitely don't need to
                 # wait for it to finish, before starting the next program on the gpu.
                 executor.submit(self.post_process, program, result)
+
+    def inner(self, example):
+        print("putting random shit")
+        self.output_queues[0].put(example)
+        print("random shit done")
 
     def post_process(self, program, result):
         acc, std = result["result"]
