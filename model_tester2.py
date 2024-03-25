@@ -52,7 +52,25 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if args.verbose:
             print("Kill complete.")
 
+    # Get stdout and stderr. First close the write end of the pipes to flush the data.
+    # Then read the data from the read end of the pipes.
+    write_stdout.close()
+    write_stderr.close()
+    with os.fdopen(read_stdout.fileno()) as file:
+        stdout = file.read()
+    with os.fdopen(read_stderr.fileno()) as file:
+        stderr = file.read()
+
+    # The readers need to be cleaned up in a slightly messy way, because of the way we
+    # messed with the underlying file descriptors
+    for conn in [write_stdout, write_stderr]:
+        try:
+            conn.close()
+        except OSError:
+            pass
+
     # Check if the process returned any result. If not, presumably it was killed.
+    # For some reason this works better if it's done after the stdout/stderr stuff.
     if not parent_conn.poll():
         result = {
             "traceback": "",
@@ -63,22 +81,8 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     else:
         result = parent_conn.recv()
 
-    # Get stdout and stderr. First close the write end of the pipes to flush the data.
-    # Then read the data from the read end of the pipes.
-    write_stdout.close()
-    write_stderr.close()
-    with os.fdopen(read_stdout.fileno()) as stdout:
-        result["stdout"] = stdout.read()
-    with os.fdopen(read_stderr.fileno()) as stderr:
-        result["stderr"] = stderr.read()
-
-    # The readers need to be cleaned up in a slightly messy way, because of the way we
-    # messed with the underlying file descriptors
-    for conn in [write_stdout, write_stderr]:
-        try:
-            conn.close()
-        except OSError:
-            pass
+    result["stdout"] = stdout
+    result["stderr"] = stderr
 
     # Even if we got a result, we still need to check if there was an error.
     if result["error"] is not None:
@@ -91,7 +95,16 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
 
 def main_wrapper(
-    code, device, dataset, test_run, time_limit, n_runs, memory_limit_bytes, child_conn, stdout_conn, stderr_conn
+    code,
+    device,
+    dataset,
+    test_run,
+    time_limit,
+    n_runs,
+    memory_limit_bytes,
+    child_conn,
+    stdout_conn,
+    stderr_conn,
 ):
     print(f"{multiprocessing.get_start_method()=}, inner")
     # Capture stdout and stderr
