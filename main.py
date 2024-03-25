@@ -123,7 +123,7 @@ class ModelProducerWorker:
         while True:
             # Take everything from the queue
             while not self.demo_queue.empty():
-                self.demos.append(self.demo_queue.get())
+                demos.append(self.demo_queue.get())
 
             # If we haven't received any demos, we may need to wait for them
             if not demos:
@@ -136,7 +136,7 @@ class ModelProducerWorker:
                     self.program_queue.put(program)
                 else:
                     print(f"Producer Worker {self.widx} waiting for demos...")
-                    self.demos.append(self.demo_queue.get())
+                    demos.append(self.demo_queue.get())
                 continue
 
             print(f"Making program from {self.widx}...")
