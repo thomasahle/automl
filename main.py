@@ -184,9 +184,6 @@ class ModelEvalWorker:
                 print("Traceback:", result["traceback"])
             return
 
-        print(
-            f"{type(acc)=}, {type(std)=}, {type(program.analysis)=}, {type(program.program)=} {type(result['stdout'])=}"
-        )
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
         print("Asking model to evaluate...")
         try:
@@ -195,8 +192,10 @@ class ModelEvalWorker:
                     "plan, program, stdout -> thoughts",
                     instructions=(
                         f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
-                        + "Describe in three short paragraphs, (1) how the program did, "
-                        + "(2) what worked well, (3) what it could have done better."
+                        + "Describe in three short paragraphs, what can be learned from the program. "
+                        + "(1) How well the program did compared to the plan, "
+                        + "(2) What parts of the program will be useful for a future better program, "
+                        + "(3) What changes will have to be made to improve the program."
                     ),
                 ),
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
@@ -207,6 +206,7 @@ class ModelEvalWorker:
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
         for queue in self.output_queues:
+            print("Putting in queue", queue)
             queue.put(
                 dspy.Example(
                     analysis=program.analysis,
