@@ -212,13 +212,14 @@ def main(
     compile=False,
 ):
     model_class = run_code_and_get_class(program, "Net")
+    dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
     print("Loading data")
     start_time = time.time()
     train_inputs, train_labels, test_inputs, test_labels = make_data(dataset)
     train_labels, test_labels = train_labels.to(device), test_labels.to(device)
-    train_inputs = train_inputs.to(torch.bfloat16).to(memory_format=torch.channels_last).to(device)
-    test_inputs = test_inputs.to(torch.bfloat16).to(memory_format=torch.channels_last).to(device)
+    train_inputs = train_inputs.to(dtype).to(memory_format=torch.channels_last).to(device)
+    test_inputs = test_inputs.to(dtype).to(memory_format=torch.channels_last).to(device)
     print(
         f"Loaded {len(train_inputs)} training and {len(test_inputs)} "
         f"test examples in {time.time() - start_time:.2f} seconds"
@@ -226,7 +227,7 @@ def main(
 
     if compile:
         print("Compiling model...")
-        net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+        net = model_class().to(dtype).to(device).to(memory_format=torch.channels_last)
         net = torch.compile(net)
         net = torch.compile(net, mode="max-autotune")
         print("Warmup...")
@@ -234,7 +235,7 @@ def main(
             train(net, train_inputs, train_labels, time_limit=1)
 
     print("Warmup...")
-    net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+    net = model_class().to(dtype).to(device).to(memory_format=torch.channels_last)
     train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=1)
 
     if test_run:
@@ -244,7 +245,7 @@ def main(
     train_losses = []
     for i in range(3):
         print(f"\nRun {i+1}:")
-        net = model_class().to(torch.bfloat16).to(device).to(memory_format=torch.channels_last)
+        net = model_class().to(dtype).to(device).to(memory_format=torch.channels_last)
         results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=time_limit)
         accuracies.append([result[2] for result in results])
         train_losses.append([result[1] for result in results])
