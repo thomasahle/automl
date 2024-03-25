@@ -4,6 +4,7 @@ from multiprocessing import Queue
 import multiprocessing
 from pathlib import Path
 import threading
+import traceback
 import dspy
 import torch
 import random
@@ -183,6 +184,9 @@ class ModelEvalWorker:
                 print("Traceback:", result["traceback"])
             return
 
+        print(
+            f"{type(acc)=}, {type(std)=}, {type(program.analysis)=}, {type(program.program)=} {type(result['stdout'])=}"
+        )
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
         print("Asking model to evaluate...")
         try:
@@ -194,6 +198,7 @@ class ModelEvalWorker:
                 ),
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
         except Exception as e:
+            print(traceback.format_exc())
             print(f"Failed to evaluate program. Error: {e}")
             return
         print("Evaluation done:", thoughts)
