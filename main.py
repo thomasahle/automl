@@ -191,10 +191,12 @@ class ModelEvalWorker:
         print("Asking model to evaluate...")
         try:
             thoughts = dspy.TypedPredictor(
-                "plan, program, stdout -> thoughts",
-                (
-                    f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
-                    + "Describe what the program did well, and what it could have done better."
+                dspy.Signature(
+                    "plan, program, stdout -> thoughts",
+                    instructions=(
+                        f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
+                        + "Describe what the program did well, and what it could have done better."
+                    ),
                 ),
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
         except Exception as e:
