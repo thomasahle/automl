@@ -228,4 +228,5 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         print(f"Worker failed: {e}")
         return None
 
+    pred.program = strip_ticks(pred.proram)
     return dspy.Example(**pred, personality=personality)
