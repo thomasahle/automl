@@ -31,6 +31,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
             child_conn,
             write_stdout,
             write_stderr,
+            args.verbose,
         ),
     )
     p.start()
@@ -101,6 +102,17 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     return result
 
 
+class VerboseWrapper:
+    def __init__(self, stream1, stream2):
+        self.stream1 = stream1
+        self.stream2 = stream2
+
+    def write(self, data):
+        self.stream1.write(data)
+        if self.stream2 is not None:
+            self.stream2.write(data)
+
+
 def main_wrapper(
     code,
     device,
@@ -112,10 +124,11 @@ def main_wrapper(
     child_conn,
     stdout_conn,
     stderr_conn,
+    verbose,
 ):
     # Capture stdout and stderr
-    sys.stdout = os.fdopen(stdout_conn.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(stderr_conn.fileno(), "w", buffering=1)
+    sys.stdout = VerboseWrapper(os.fdopen(stdout_conn.fileno(), "w", buffering=1), sys.stdout if verbose else None)
+    sys.stderr = VerboseWrapper(os.fdopen(stderr_conn.fileno(), "w", buffering=1), sys.stderr if verbose else None)
 
     # Try to limit the maximal memory usage. Though this is not guaranteed to work.
     # resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
@@ -123,18 +136,18 @@ def main_wrapper(
         result = cifar_runner.main(code, device, dataset, time_limit, test_run, compile=False, n_runs=n_runs)
     except Exception as e:
         trace = traceback.format_exc()
-        error = e
+        error = str(e)
         result = (0, 0)
     else:
         trace = None
         error = None
-    child_conn.send({"result": 10})
-    # child_conn.send(
-    #    {
-    #        "traceback": trace,
-    #        "error": error,
-    #        "result": result,
-    #    }
-    # )
+    # child_conn.send({"result": result})
+    child_conn.send(
+        {
+            "traceback": trace,
+            "error": error,
+            "result": result,
+        }
+    )
     stdout_conn.close()
     stderr_conn.close()
