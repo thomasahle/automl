@@ -3,8 +3,8 @@ import os
 import sys
 import time
 
-def worker(stdout_pipe, child_conn):
-    sys.stdout = os.fdopen(stdout_pipe, "w", buffering=1)
+def worker(path, child_conn):
+    sys.stdout = open(path, "w")
     print("Started...")
     for i in range(10):
         time.sleep(.1)
@@ -13,8 +13,9 @@ def worker(stdout_pipe, child_conn):
 
 def main():
     read_stdout, write_stdout = os.pipe()
+    path = f'/proc/{os.getpid()}/fd/{write_stdout}'
     parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-    p = multiprocessing.Process(target=worker, args=(write_stdout, child_conn))
+    p = multiprocessing.Process(target=worker, args=(path, child_conn))
     p.start()
     p.join()
 
@@ -25,5 +26,6 @@ def main():
     print("got object:", parent_conn.recv())
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     main()
 
