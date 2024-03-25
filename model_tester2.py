@@ -135,7 +135,6 @@ def main_wrapper(
         trace = None
         error = None
 
-    print(f"{result=}")
     child_conn.send(
         {
             "traceback": trace,

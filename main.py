@@ -180,6 +180,8 @@ class ModelEvalWorker:
                 print("Traceback:", result["traceback"])
             return
 
+        print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
+        print("Asking model to evaluate...")
         thoughts = dspy.TypedPredictor(
             "plan, program, stdout -> thoughts",
             (
@@ -187,6 +189,8 @@ class ModelEvalWorker:
                 + "Describe what the program did well, and what it could have done better."
             ),
         )(program.analysis, program.program, result["stdout"]).thoughts
+        print("Evaluation done:", thoughts)
+        print("Sending to output queues...")
         for queue in self.output_queues:
             queue.put(
                 dspy.Example(
