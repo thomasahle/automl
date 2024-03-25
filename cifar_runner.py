@@ -2,6 +2,7 @@ import torchvision
 import torchvision.transforms as transforms
 import time
 import torch
+import sys
 
 sample_nets = [
     """
@@ -271,5 +272,5 @@ def main(
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    # main(sample_net_0)
-    main(sample_net_1, device, "cifar10", time_limit=5)
+    i = int(sys.argv[1])
+    main(sample_nets[i], device, "cifar10", time_limit=5)
