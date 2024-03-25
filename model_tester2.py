@@ -103,7 +103,10 @@ class VerboseWrapper:
     def write(self, data):
         self.stream1.write(data)
         if self.stream2 is not None:
-            self.stream2.write(data)
+            OKCYAN = "\033[96m"
+            OKGREEN = "\033[92m"
+            ENDC = "\033[0m"
+            self.stream2.write(OKCYAN + data + ENDC)
 
 
 def main_wrapper(

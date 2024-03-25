@@ -194,7 +194,7 @@ class ModelEvalWorker:
                 ),
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
         except Exception as e:
-            thoughts = f"Failed to evaluate program. Error: {e}"
+            print(f"Failed to evaluate program. Error: {e}")
             return
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
