@@ -185,8 +185,9 @@ class ModelEvalWorker:
 
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
         print("Test dspy")
-        # answer = dspy.TypedPredictor("question -> answer")("What is 1+1?").answer
-        print(f"Answer: {self.predictor('What is 1+1?').answer}")
+        answer = dspy.TypedPredictor("question -> answer")(question="What is 1+1?").answer
+        # print(f"Answer: {self.predictor(question='What is 1+1?').answer}")
+        print("Answer:", answer)
         print("Asking model to evaluate...")
         thoughts = dspy.TypedPredictor(
             "plan, program, stdout -> thoughts",
@@ -194,7 +195,7 @@ class ModelEvalWorker:
                 f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3}."
                 + "Describe what the program did well, and what it could have done better."
             ),
-        )(program.analysis, program.program, result["stdout"]).thoughts
+        )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
         for queue in self.output_queues:
