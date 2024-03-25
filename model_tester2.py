@@ -28,6 +28,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
             args.dataset,
             test_run,
             args.train_time,
+            args.n_runs,
             memory_limit_bytes,
             child_conn,
             write_stdout,
@@ -37,7 +38,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     p.start()
 
     # We give the process some extra time to finish, since there is some overhead in starting the process
-    p.join(args.train_time * 2 + 10)
+    p.join(args.train_time * (1 + args.n_runs) + 10)
 
     if p.is_alive():
         # If the process is still alive after time_limit_sec, terminate it
@@ -75,7 +76,9 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     return result
 
 
-def main_wrapper(code, device, dataset, test_run, time_limit, memory_limit_bytes, child_conn, stdout_pipe, stderr_pipe):
+def main_wrapper(
+    code, device, dataset, test_run, time_limit, n_runs, memory_limit_bytes, child_conn, stdout_pipe, stderr_pipe
+):
     # Capture stdout and stderr
     sys.stdout = os.fdopen(stdout_pipe, "w", buffering=1)
     sys.stderr = os.fdopen(stderr_pipe, "w", buffering=1)
@@ -83,7 +86,7 @@ def main_wrapper(code, device, dataset, test_run, time_limit, memory_limit_bytes
     # Try to limit the maximal memory usage. Though this is not guaranteed to work.
     # resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
     try:
-        result = cifar_runner.main(code, device, dataset, time_limit, test_run, compile=False)
+        result = cifar_runner.main(code, device, dataset, time_limit, test_run, compile=False, n_runs=n_runs)
     except Exception as e:
         trace = traceback.format_exc()
         error = e

@@ -211,6 +211,7 @@ def main(
     time_limit=5,
     test_run=False,
     compile=False,
+    n_runs=3,
 ):
     model_class = run_code_and_get_class(program, "Net")
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
@@ -244,7 +245,7 @@ def main(
 
     accuracies = []
     train_losses = []
-    for i in range(3):
+    for i in range(n_runs):
         print(f"\nRun {i+1}:")
         net = model_class().to(dtype).to(device).to(memory_format=torch.channels_last)
         results = train(net, train_inputs, train_labels, test_inputs, test_labels, time_limit=time_limit)
