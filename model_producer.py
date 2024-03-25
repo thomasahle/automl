@@ -1,11 +1,11 @@
 import itertools
-import queue
 import re
 import dspy
 import textwrap
 import pydantic
 
 import model_tester2
+import cifar_runner
 
 
 def get_model_parameters(model):
