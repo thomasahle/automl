@@ -47,7 +47,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if args.verbose:
             print("Process timeout. Killing process...")
         p.terminate()
-        p.join()
+        p.join()  # TODO: Do we really need to wait for the termination to finish?
         if args.verbose:
             print("Kill complete.")
 
@@ -76,7 +76,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     for conn in [write_stdout, write_stderr]:
         try:
             conn.close()
-        except IOError:
+        except OSError:
             pass
 
     # Even if we got a result, we still need to check if there was an error.
