@@ -145,8 +145,9 @@ def main_wrapper(
     print(f"{result=}")
     child_conn.send(
         {
-            # "result": (0, 0),
-            "result": result,
+            "traceback": trace,
+            "result": (0, 0),
+            # "result": result,
         }
     )
     # child_conn.send(
