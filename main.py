@@ -61,8 +61,10 @@ def main():
         min_length = args.num_producers - len(personalities)
         personalities.extend(
             dspy.TypedPredictor(
-                f"personalities:list[str] -> more_personalities:Annotated[list[str], Field(min_length={min_length})]",
-                f"Think of {min_length} more personalities.",
+                dspy.Signature(
+                    f"personalities:list[str] -> more_personalities:Annotated[list[str], Field(min_length={min_length})]",
+                    f"Think of {min_length} more personalities.",
+                )
             )(personalities).more_personalities
         )
 
@@ -157,7 +159,6 @@ class ModelEvalWorker:
         self.args = args
         self.program_queue = program_queue
         self.output_queues = output_queues
-        self.predictor = dspy.TypedPredictor("question -> answer")
 
     def run(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -165,6 +166,10 @@ class ModelEvalWorker:
                 if self.program_queue.empty() and self.args.verbose:
                     print(f"Worker {self.widx} waiting for programs...")
                 program = self.program_queue.get()
+                # test
+                print("putting random shit")
+                self.output_queues[-1].put("random shit")
+                print("random shit done")
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
                 if self.args.verbose:
