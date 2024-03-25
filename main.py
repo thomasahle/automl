@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 import datetime
 from multiprocessing import Queue
 import multiprocessing
@@ -210,12 +209,12 @@ class ModelEvalWorker:
             print("Putting in queue", queue)
             queue.put(
                 dspy.Example(
+                    score=acc,
+                    personality=program.personality,
                     analysis=program.analysis,
                     program=program.program,
-                    personality=program.personality,
                     evaluation=thoughts,
                     stdout=result["stdout"],
-                    score=acc + std,
                     accuracy=acc,
                     std=std,
                 )

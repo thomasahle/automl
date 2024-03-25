@@ -47,7 +47,7 @@ def check_program(args, v):
     return v
 
 
-def ImproveSignature(args, personality):
+def ImproveSignature(args):
     class ImproveSignature(dspy.Signature):
         __doc__ = textwrap.dedent(f"""
         Write a new pytorch module to get the best score on {args.dataset} given
@@ -75,12 +75,11 @@ def ImproveSignature(args, personality):
         - Not use too much memory
         - Make every new program different from the previous ones
         - Don't import pretrained models
-
-        {personality}
         """)
 
         score: float = dspy.InputField(desc="The accuracy the model should get")
-        # score: float = dspy.OutputField(desc="The accuracy the model should get")
+        personality: str = dspy.InputField(desc="A personality to guide the model design")
+
         analysis: str = dspy.OutputField(
             desc="Short analysis of what the previous models did that worked well or didn't work well. "
             + "Answer in plain text, no Markdown."
@@ -177,7 +176,7 @@ def make_initial_program(args, i):
 
 def make_from_demos(args, personality, demos, used_demo_subsets):
     proposer = dspy.TypedPredictor(
-        ImproveSignature(args, personality),
+        ImproveSignature(args),
         explain_errors=True,
         max_retries=args.max_retries,
     )
@@ -201,9 +200,10 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
     proposer.predictor.demos = [demo for i, demo in subset]
     target_score = (max(demo.score for demo in demos) + 1) / 2
     try:
-        pred = proposer(score=target_score)
+        pred = proposer(score=target_score, personality=personality)
     except ValueError as e:
         dspy.settings.lm.inspect_history(n=1)
+        print(f"Worker failed: {e}")
         return None
 
     return key, dspy.Example(**pred)
