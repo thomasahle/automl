@@ -8,7 +8,8 @@ from argparse import Namespace
 import cifar_runner
 
 # if sys.platform == "darwin":
-multiprocessing.set_start_method("fork")
+# multiprocessing.set_start_method("fork")
+multiprocessing.set_start_method("spawn")
 
 
 # Computes the accuracy of the model in a separate process, with resource limits
