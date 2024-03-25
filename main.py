@@ -43,7 +43,7 @@ personalities = [
 ]
 
 
-async def main():
+def main():
     random.seed(42)
     torch.manual_seed(42)
     dotenv.load_dotenv(os.path.expanduser("~/.env"))
@@ -67,12 +67,12 @@ async def main():
     output_folder.mkdir(parents=True, exist_ok=True)
 
     demo_queues = [Queue() for _ in range(args.num_producers)]
-    program_queue = Queue(max_size=10)  # Limit the number of programs we can produce without testing any
+    program_queue = Queue(maxsize=10)  # Limit the number of programs we can produce without testing any
     eval_queue = Queue()
 
     # Each thread/worker has an input queue and a list of output queues
     threads = [
-        threading.Thread(target=ModelProducerWorker(i, args, personalities[i], demo_queues[i], [program_queue]).run)
+        threading.Thread(target=ModelProducerWorker(i, args, personalities[i], demo_queues[i], program_queue).run)
         for i in range(args.num_evals)
     ]
     threads.append(
@@ -103,12 +103,12 @@ def write_example_to_file(pidx, example, args, output_folder):
 
 
 class ModelProducerWorker:
-    def __init__(self, widx, args, personality, demo_queue, output_queues):
+    def __init__(self, widx, args, personality, demo_queue, program_queue):
         self.widx = widx
         self.args = args
         self.personality = personality
         self.demo_queue = demo_queue
-        self.output_queues = output_queues
+        self.program_queue = program_queue
 
     def run(self):
         demos = {}
@@ -121,13 +121,12 @@ class ModelProducerWorker:
 
             # If we haven't received any demos, we may need to wait for them
             if not demos:
-                if self.args.from_scratch or self.widx == 0:
-                    program = model_producer.make_initial_program(self.args)
+                if self.args.from_scratch or self.widx <= 1:
+                    program = model_producer.make_initial_program(self.args, self.widx)
                     if program is None:
                         print("Failed to make initial program.")
                         continue
-                    for queue in self.output_queues:
-                        queue.put(program)
+                    self.program_queue.put(program)
                 else:
                     print(f"Worker {self.widx} waiting for demos...")
                     pidx, demo = self.demo_queue.get()
@@ -135,14 +134,15 @@ class ModelProducerWorker:
                 continue
 
             print(f"Making program from {self.widx}...")
-            program = model_producer.make_from_demos(self.args, self.personality, demos)
+            program = model_producer.make_from_demos(self.args, self.personality, demos, used_demo_subsets)
             if program is None:
                 print(f"Worker {self.widx} failed to make program.")
                 continue
             program.personality = self.personality
 
-            for queue in self.output_queues:
-                queue.put(program)
+            # TODO: Maybe print something to the console indicating if we are going to sleep
+            # while trying to put something in a full queue?
+            self.program_queue.put(program)
 
 
 class ModelEvalWorker:
@@ -158,7 +158,9 @@ class ModelEvalWorker:
                 program = self.program_queue.get()
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
-                result = model_tester2.run_in_worker(program, self.args, test_run=False)
+                if self.args.verbose:
+                    print(f"Worked {self.widx} got program, {program.program[:50]}...")
+                result = model_tester2.run_in_worker(program.program, self.args, test_run=False)
                 # But we can still run the evaluation in parallel, and definitely don't need to
                 # wait for it to finish, before starting the next program on the gpu.
                 executor.submit(self.post_process, program, result)

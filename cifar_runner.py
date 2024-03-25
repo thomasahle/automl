@@ -3,7 +3,8 @@ import torchvision.transforms as transforms
 import time
 import torch
 
-sample_net_0 = """
+sample_nets = [
+    """
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -32,9 +33,9 @@ class Net(nn.Module):
         batch_size = 256
         loss_fn = nn.CrossEntropyLoss(reduction="sum")
         return optimizer, scheduler, batch_size, loss_fn
-"""
-
-sample_net_1 = """
+""",
+    # Based on Keller's Net
+    """
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -45,15 +46,15 @@ class Net(nn.Module):
         self.net = nn.Sequential(
             nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
             nn.GELU(),
-            self.make_conv_group(24, 64),
-            self.make_conv_group(64, 256),
-            self.make_conv_group(256, 256),
+            self._make_conv_group(24, 64),
+            self._make_conv_group(64, 256),
+            self._make_conv_group(256, 256),
             nn.MaxPool2d(3),
             nn.Flatten(),
             nn.Linear(256, 10, bias=False),
         )
 
-    def make_conv_group(self, channels_in, channels_out):
+    def _make_conv_group(self, channels_in, channels_out):
         return nn.Sequential(
             nn.Conv2d(channels_in, channels_out, kernel_size=3, padding="same", bias=False),
             nn.MaxPool2d(2),
@@ -69,11 +70,12 @@ class Net(nn.Module):
 
     def get_optimizers(self):
         batch_size = 1024
-        optimizer = optim.Adam(self.parameters(), lr=0.01, fused=True)
+        optimizer = optim.AdamW(self.parameters(), lr=0.01, fused=True)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
-        loss_fn = nn.CrossEntropyLoss(reduction="sum")
+        loss_fn = nn.CrossEntropyLoss(reduction="sum", label_smoothing=0.2)
         return optimizer, scheduler, loss_fn, batch_size
-"""
+""",
+]
 
 
 def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limit):

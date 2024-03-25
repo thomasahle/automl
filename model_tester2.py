@@ -25,8 +25,9 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         args=(
             code,
             "cpu" if test_run else "cuda",
+            args.dataset,
             test_run,
-            args.time_limit,
+            args.train_time,
             memory_limit_bytes,
             child_conn,
             write_stdout,
@@ -69,22 +70,22 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if test_run:
             raise result["error"]
         if args.verbose:
-            print(f"Warning: The process failed with excetion {result}.")
+            print(f"Warning: The process failed with excetion {result['error']}.")
 
     return result
 
 
-def main_wrapper(code, device, test_run, time_limit, memory_limit_bytes, child_conn, stdout_pipe, stderr_pipe):
+def main_wrapper(code, device, dataset, test_run, time_limit, memory_limit_bytes, child_conn, stdout_pipe, stderr_pipe):
     # Capture stdout and stderr
     sys.stdout = os.fdopen(stdout_pipe, "w", buffering=1)
     sys.stderr = os.fdopen(stderr_pipe, "w", buffering=1)
 
     # Try to limit the maximal memory usage. Though this is not guaranteed to work.
-    resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
+    # resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
     try:
-        result = cifar_runner.main(code, device, test_run, time_limit=time_limit, compile=False)
+        result = cifar_runner.main(code, device, dataset, time_limit, test_run, compile=False)
     except Exception as e:
-        traceback.format_exc()
+        trace = traceback.format_exc()
         error = e
         result = (0, 0)
     else:

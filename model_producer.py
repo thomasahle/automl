@@ -6,8 +6,7 @@ import textwrap
 import pydantic
 
 import model_tester
-from default_progs import template
-import default_progs
+import cifar_runner
 
 
 def get_model_parameters(model):
@@ -23,14 +22,17 @@ def check_program(args, v):
     for line in lines:
         if line and not any(line.startswith(prefix) for prefix in allowed):
             raise ValueError(f"Don't write any code besides the class. You wrote {repr(line)}")
+    # TODO: Maybe just limit imports to torch and torch.nn?
     if "torchvision.models" in v:
         raise ValueError("Don't import torchvision.models")
     if f"class {args.class_name}" not in v:
         raise ValueError(f"You must define one class named {args.class_name}")
-    if "self.batch_size" not in v or "self.transform" not in v:
-        raise ValueError(
-            "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
-        )
+    # if "self.batch_size" not in v or "self.transform" not in v:
+    #     raise ValueError(
+    #         "Remember to define self.batch_size and self.transform, such as self.batch_size=64 and self.transform=transforms.Compose([transforms.ToTensor()])"
+    #     )
+    if "def get_optimizers(self):" not in v:
+        raise ValueError("Remember to define a get_optimizers method")
     try:
         # Attempt to compile the code snippet
         compile(v, "<string>", "exec")
@@ -48,7 +50,7 @@ def check_program(args, v):
 def ImproveSignature(args, personality):
     class ImproveSignature(dspy.Signature):
         __doc__ = textwrap.dedent(f"""
-        Write a new python lightning class to get the best score on {args.dataset} given
+        Write a new pytorch module to get the best score on {args.dataset} given
         {args.train_time} seconds training time. I will give you some examples, and you should
         use your creativity to suggest a better model, that will achieve higher accuracy than
         any of the previous models.
@@ -105,12 +107,33 @@ def ImproveSignature(args, personality):
     return ImproveSignature
 
 
+initial_template = """
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        ...
+
+    def forward(self, x):
+        ...
+
+    def configure_optimizers(self):
+        optimizer = optim.Adam(self.parameters())
+        scheduler = optim.lr_scheduler.ExponentialLR(gamma=0.9)
+        batch_size = 256
+        loss_fn = nn.CrossEntropyLoss(reduction="sum")
+        return optimizer, scheduler, batch_size, loss_fn
+"""
+
+
 def InitialSignature(args):
     class InitialSignature(dspy.Signature):
-        f"""Write a simple python class for training a model for {args.dataset}. Use the template: ```python\n{template}\n```"""
-        program: str = dspy.OutputField(
-            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
-        )
+        f"""Write a simple python class for training a model for {args.dataset}. Use the template: ```python\n{initial_template}\n```"""
+        program: str = dspy.OutputField(desc="A pytorch module, `class Net(nn.Module)`. No other code.")
 
         @pydantic.field_validator("program")
         def check_syntax(cls, v):
@@ -119,7 +142,7 @@ def InitialSignature(args):
     return InitialSignature
 
 
-def make_initial_program(args):
+def make_initial_program(args, i):
     if args.from_scratch:
         print("Making initial program...")
         initial_proposer = dspy.TypedPredictor(
@@ -135,10 +158,12 @@ def make_initial_program(args):
         program = pred.program
 
     else:
+        # TODO: Maybe better to move this to main.py, since it'll be better able to
+        # make decisions about how many initial programs to use.
         if args.dataset == "mnist":
             program = default_progs.mnist
         elif args.dataset == "cifar10":
-            program = default_progs.cifar
+            program = cifar_runner.sample_nets[i]
         else:
             raise ValueError(f"Unsupported dataset: {args.dataset}")
 
