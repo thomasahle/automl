@@ -3,16 +3,18 @@ import os
 import sys
 import time
 
+
 def worker(stdout_conn, child_conn):
     sys.stdout = os.fdopen(stdout_conn.fileno(), "w", buffering=1)
     print("Started...")
     for i in range(10):
-        time.sleep(.1)
+        time.sleep(0.1)
         print(i, end=" ")
         if i % 3 == 0:
             print(flush=True)
     child_conn.send({"result": 10})
     stdout_conn.close()
+
 
 def main(timeout):
     print(f"\nTimeout: {timeout}")
@@ -22,6 +24,7 @@ def main(timeout):
     p.start()
     p.join(timeout=timeout)
     if p.is_alive():
+        print("Timeout. Terminating.")
         p.terminate()
         p.join()
 
@@ -36,12 +39,12 @@ def main(timeout):
         pass
 
     if not parent_conn.poll():
-        print("No object")
+        print("No object. (Killed)")
     else:
-        print("got object:", parent_conn.recv())
+        print("Got object:", parent_conn.recv())
+
 
 if __name__ == "__main__":
     multiprocessing.set_start_method("spawn")
     main(timeout=1.1)
-    main(timeout=.5)
-
+    main(timeout=0.5)
