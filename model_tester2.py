@@ -63,7 +63,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
     # The readers need to be cleaned up in a slightly messy way, because of the way we
     # messed with the underlying file descriptors
-    for conn in [write_stdout, write_stderr]:
+    for conn in [read_stdout, read_stderr]:
         try:
             conn.close()
         except OSError:

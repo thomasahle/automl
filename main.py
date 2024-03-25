@@ -115,6 +115,7 @@ class ModelProducerWorker:
     def run(self):
         demos = {}
         used_demo_subsets = set()
+        make_initial = True
         while True:
             # Take everything from the queue
             while not self.demo_queue.empty():
@@ -123,14 +124,15 @@ class ModelProducerWorker:
 
             # If we haven't received any demos, we may need to wait for them
             if not demos:
-                if self.args.from_scratch or self.widx <= 1:
+                if make_initial and (self.args.from_scratch or self.widx <= 1):
+                    make_initial = False  # Only make the initial program once
                     program = model_producer.make_initial_program(self.args, self.widx)
                     if program is None:
                         print("Failed to make initial program.")
                         continue
                     self.program_queue.put(program)
                 else:
-                    print(f"Worker {self.widx} waiting for demos...")
+                    print(f"Producer Worker {self.widx} waiting for demos...")
                     pidx, demo = self.demo_queue.get()
                     demos[pidx] = demo
                 continue
