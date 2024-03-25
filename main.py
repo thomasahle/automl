@@ -165,7 +165,7 @@ class ModelEvalWorker:
                     print(f"Worker {self.widx} waiting for programs...")
                 program = self.program_queue.get()
                 # test
-                executor.submit(self.inner, dspy.Example(random="shit"))
+                # executor.submit(self.inner, dspy.Example(random="shit"))
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
                 if self.args.verbose:
@@ -211,19 +211,23 @@ class ModelEvalWorker:
             return
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
-        for queue in self.output_queues:
-            print("Putting in queue", queue)
-            queue.put(
-                dspy.Example(
-                    analysis=program.analysis,
-                    program=program.program,
-                    personality=program.personality,
-                    evaluation=thoughts,
-                    stdout=result["stdout"],
-                    accuracy=acc,
-                    std=std,
+        try:
+            for queue in self.output_queues:
+                print("Putting in queue", queue)
+                queue.put(
+                    dspy.Example(
+                        analysis=program.analysis,
+                        program=program.program,
+                        personality=program.personality,
+                        evaluation=thoughts,
+                        stdout=result["stdout"],
+                        accuracy=acc,
+                        std=std,
+                    )
                 )
-            )
+        except Exception as e:
+            print(traceback.format_exc())
+            return
 
 
 if __name__ == "__main__":
