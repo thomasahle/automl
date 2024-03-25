@@ -16,14 +16,14 @@ class Net(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
         self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
+        self.pool = nn.MaxPool2d(2)
         self.fc1 = nn.Linear(32 * 8 * 8, 64)
         self.fc2 = nn.Linear(64, 10)
 
     def forward(self, x):
-        x = self.pool(nn.functional.relu(self.conv1(x)))
-        x = self.pool(nn.functional.relu(self.conv2(x)))
-        x = x.view(-1, 32 * 8 * 8)
+        x = self.pool(F.relu(self.conv1(x))) # 16x16x16
+        x = self.pool(F.relu(self.conv1(x))) # 32x8x8
+        x = x.reshape(-1, 32 * 8 * 8)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -45,12 +45,12 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
+            nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True), # 24x31x31
             nn.GELU(),
-            self._make_conv_group(24, 64),
-            self._make_conv_group(64, 256),
-            self._make_conv_group(256, 256),
-            nn.MaxPool2d(3),
+            self._make_conv_group(24, 64),   # 64x15x15
+            self._make_conv_group(64, 256),  # 256x7x7
+            self._make_conv_group(256, 256), # 256x3x3
+            nn.MaxPool2d(3),                 # 256x1x1
             nn.Flatten(),
             nn.Linear(256, 10, bias=False),
         )
