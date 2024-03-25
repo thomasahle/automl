@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 from multiprocessing import Queue
+import multiprocessing
 from pathlib import Path
 import threading
 import dspy
@@ -198,4 +199,5 @@ class ModelEvalWorker:
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     main()
