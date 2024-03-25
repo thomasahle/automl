@@ -108,6 +108,11 @@ class VerboseWrapper:
             ENDC = "\033[0m"
             self.stream2.write(OKCYAN + data + ENDC)
 
+    def flush(self):
+        self.stream1.flush()
+        if self.stream2 is not None:
+            self.stream2.flush()
+
 
 def main_wrapper(
     code,
