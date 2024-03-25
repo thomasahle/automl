@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import resource
 import sys
+import time
 import traceback
 from argparse import Namespace
 
@@ -35,19 +36,23 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     p.start()
 
     # We give the process some extra time to finish, since there is some overhead in starting the process
+    start_time = time.time()
     timeout = args.train_time * (1 + args.n_runs) + args.train_overhead
     if args.verbose:
         print(f"Waiting for process to finish. Timeout: {timeout}")
     p.join(timeout)
 
+    # If the process is still alive after time_limit_sec, terminate it
     if p.is_alive():
-        # If the process is still alive after time_limit_sec, terminate it
         if args.verbose:
             print("Process timeout. Killing process...")
         p.terminate()
         p.join()  # TODO: Do we really need to wait for the termination to finish?
         if args.verbose:
             print("Kill complete.")
+    else:
+        if args.verbose:
+            print(f"Process finished naturally after {time.time() - start_time:.2}s.")
 
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.
