@@ -189,13 +189,16 @@ class ModelEvalWorker:
         # print(f"Answer: {self.predictor(question='What is 1+1?').answer}")
         print("Answer:", answer)
         print("Asking model to evaluate...")
-        thoughts = dspy.TypedPredictor(
-            "plan, program, stdout -> thoughts",
-            (
-                f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3}."
-                + "Describe what the program did well, and what it could have done better."
-            ),
-        )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
+        try:
+            thoughts = dspy.TypedPredictor(
+                "plan, program, stdout -> thoughts",
+                (
+                    f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3}."
+                    + "Describe what the program did well, and what it could have done better."
+                ),
+            )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
+        except Exception as e:
+            thoughts = f"Failed to evaluate program. Error: {e}"
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
         for queue in self.output_queues:
