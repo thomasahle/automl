@@ -55,6 +55,16 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if args.verbose:
             print(f"Process finished naturally after {time.time() - start_time:.2f}s.")
 
+    # Check if the process returned any result. If not, presumably it was killed.
+    if parent_conn.poll():
+        result = parent_conn.recv()
+    else:
+        result = {
+            "traceback": "",
+            "error": TimeoutError("The process did not return any result."),
+            "result": (0, 0),
+        }
+
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.
     write_stdout.close()
@@ -71,23 +81,6 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
             conn.close()
         except OSError:
             pass
-
-    # Check if the process returned any result. If not, presumably it was killed.
-    # For some reason this works better if it's done after the stdout/stderr stuff.
-    result = None
-    try:
-        if parent_conn.poll():
-            result = parent_conn.recv()
-    except FileNotFoundError as e:
-        print(traceback.format_exc())
-        if args.verbose:
-            print(f"Error: {e}. (Timeout?)")
-    if result is None:
-        result = {
-            "traceback": "",
-            "error": TimeoutError("The process did not return any result."),
-            "result": (0, 0),
-        }
 
     result["stdout"] = stdout
     result["stderr"] = stderr
