@@ -252,6 +252,11 @@ def main(
         accuracies.append([result[2] for result in results])
         train_losses.append([result[1] for result in results])
 
+    # Pad the accuracies and training losses to have same length
+    length = max(len(acc) for acc in accuracies)
+    accuracies = [acc + [acc[-1]] * (length - len(acc)) for acc in accuracies]
+    train_losses = [tl + [tl[-1]] * (length - len(tl)) for tl in train_losses]
+
     # Compute the standard deviation of the accuracy and training loss
     accuracies = torch.tensor(accuracies)
     train_losses = torch.tensor(train_losses)
