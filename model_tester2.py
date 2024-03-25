@@ -132,7 +132,8 @@ def main_wrapper(
         result = cifar_runner.main(code, device, dataset, time_limit, test_run, compile=False, n_runs=n_runs)
     except Exception as e:
         trace = traceback.format_exc()
-        error = str(e)
+        # error = str(e)
+        error = e
         result = (0, 0)
     else:
         trace = None
