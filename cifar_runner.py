@@ -121,9 +121,17 @@ def train(model, train_inputs, train_labels, test_inputs, test_labels, time_limi
 
         model.eval()
         with torch.no_grad():
-            outputs = model(test_inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            accuracy = (predicted == test_labels).sum().item() / test_labels.size(0)
+            # During evaluation, we use left-right flipping TTA, in which the network is run on both a given test image
+            # and its mirror, and inferences are made based on the average of the two outputs.
+            corrects = 0
+            for e in range(2):
+                if e == 1:
+                    test_inputs = torch.flip(test_inputs, [3])
+                for i in range(0, len(train_inputs), batch_size):
+                    outputs = model(test_inputs[i : i + batch_size])
+                    _, predicted = torch.max(outputs.data, 1)
+                    corrects += (predicted == test_labels[i : i + batch_size]).sum().item()
+            accuracy = corrects / (2 * test_labels.size(0))
             results.append([total_items / len(train_labels), train_loss, accuracy, total_time_seconds])
             print(f"{results[-1][0]:10.2f}{results[-1][1]:13.4f}{results[-1][2]*100:12.2f}%{results[-1][3]:9.2f}s")
 
@@ -172,11 +180,6 @@ def make_data(dataset, test_run=False):
         train_labels.append(tl)
     train_inputs = torch.cat(train_inputs)
     train_labels = torch.cat(train_labels)
-
-    # During evaluation, we use left-right flipping TTA, in which the network is run on both a given test image
-    # and its mirror, and inferences are made based on the average of the two outputs.
-    test_inputs = torch.cat([test_inputs, torch.flip(test_inputs, [3])])
-    test_labels = torch.cat([test_labels, test_labels])
 
     std, mean = torch.std_mean(train_inputs, dim=(0, 2, 3))
 
