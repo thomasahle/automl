@@ -20,8 +20,8 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
     read_stdout, write_stdout = os.pipe()
     read_stderr, write_stderr = os.pipe()
-    # parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
-    q = multiprocessing.Queue()
+    parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+    # q = multiprocessing.Queue()
     p = multiprocessing.Process(
         target=main_wrapper,
         args=(
@@ -32,8 +32,8 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
             args.train_time,
             args.n_runs,
             memory_limit_bytes,
-            # child_conn,
-            q,
+            child_conn,
+            # q,
             write_stdout,
             write_stderr,
         ),
@@ -58,28 +58,28 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         if args.verbose:
             print("Kill complete.")
 
-    result = q.get_nowait()
-    # try:
-    #     # Check if the process returned any result. If not, presumably it was killed.
-    #     if not parent_conn.poll():
-    #         result = {
-    #             "traceback": "",
-    #             "error": TimeoutError("The process did not return any result."),
-    #             "result": (0, 0),
-    #         }
-    #     # Otherwise get normal result
-    #     else:
-    #         result = parent_conn.recv()
-    # except FileNotFoundError as e:
-    #     if args.verbose:
-    #         print(f"Unable to read from parent_connection? {e}")
-    #     result = {
-    #         "traceback": traceback.format_exc(),
-    #         "error": e,
-    #         "result": (0, 0),
-    #     }
-    # finally:
-    #     parent_conn.close()
+    # result = q.get_nowait()
+    try:
+        # Check if the process returned any result. If not, presumably it was killed.
+        if not parent_conn.poll():
+            result = {
+                "traceback": "",
+                "error": TimeoutError("The process did not return any result."),
+                "result": (0, 0),
+            }
+        # Otherwise get normal result
+        else:
+            result = parent_conn.recv()
+    except FileNotFoundError as e:
+        if args.verbose:
+            print(f"Unable to read from parent_connection? {e}")
+        result = {
+            "traceback": traceback.format_exc(),
+            "error": e,
+            "result": (0, 0),
+        }
+    finally:
+        parent_conn.close()
 
     # Get stdout and stderr. First close the write end of the pipes to flush the data.
     # Then read the data from the read end of the pipes.
@@ -119,12 +119,12 @@ def main_wrapper(
         trace = None
         error = None
 
-    # child_conn.send(
-    child_conn.put(
+    child_conn.send(
+        # child_conn.put(
         {
             "traceback": trace,
             "error": error,
             "result": result,
         }
     )
-    # child_conn.close()
+    child_conn.close()

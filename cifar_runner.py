@@ -3,7 +3,6 @@ import torchvision
 import torchvision.transforms as transforms
 import time
 import torch
-import sys
 
 sample_nets = [
     """
