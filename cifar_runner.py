@@ -217,7 +217,7 @@ def main(
 
     print("Loading data")
     start_time = time.time()
-    train_inputs, train_labels, test_inputs, test_labels = make_data(dataset)
+    train_inputs, train_labels, test_inputs, test_labels = make_data(dataset, test_run=test_run)
     train_labels, test_labels = train_labels.to(device), test_labels.to(device)
     train_inputs = train_inputs.to(dtype).to(memory_format=torch.channels_last).to(device)
     test_inputs = test_inputs.to(dtype).to(memory_format=torch.channels_last).to(device)
