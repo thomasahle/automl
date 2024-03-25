@@ -5,8 +5,7 @@ import dspy
 import textwrap
 import pydantic
 
-import model_tester
-import cifar_runner
+import model_tester2
 
 
 def get_model_parameters(model):
@@ -15,8 +14,23 @@ def get_model_parameters(model):
     return total_params, trainable_params
 
 
+# This is totally unsafe. Run at your own risk.
+def run_code_and_get_class(code, class_name):
+    namespace = {}
+    exec(code, namespace)
+    return namespace[class_name]
+
+
+def strip_ticks(s):
+    s = s.strip()
+    if s.startswith("```python\n"):
+        assert s.endswith("```")
+        return s[10:-3]
+    return s
+
+
 def check_program(args, v):
-    v = model_tester.strip_ticks(v)
+    v = strip_ticks(v)
     lines = v.split("\n")
     allowed = ["import", "from", "class", " ", "#"]
     for line in lines:
@@ -37,11 +51,11 @@ def check_program(args, v):
         # Attempt to compile the code snippet
         compile(v, "<string>", "exec")
         # Attempt to run the code snippet
-        Model = model_tester.run_code_and_get_class(v, args.class_name)
+        Model = run_code_and_get_class(v, args.class_name)
         total_params, _ = get_model_parameters(Model())
         if total_params > args.max_params:
             raise ValueError(f"You used {total_params:,} parameters. Please keep it under {args.max_params:,}")
-        _ = model_tester.compute_accuracy(v, args, test_run=True)
+        _ = model_tester2.run_in_worker(v, args, test_run=True)
     except Exception as e:
         raise ValueError(f"Code did not run: {e}")
     return v
