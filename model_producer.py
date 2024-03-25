@@ -124,9 +124,9 @@ class Net(nn.Module):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters())
         scheduler = optim.lr_scheduler.ExponentialLR(gamma=0.9)
-        batch_size = 256
         loss_fn = nn.CrossEntropyLoss(reduction="sum")
-        return optimizer, scheduler, batch_size, loss_fn
+        batch_size = 256
+        return optimizer, scheduler, loss_fn, batch_size
 """
 
 
@@ -161,7 +161,7 @@ def make_initial_program(args, i):
         # TODO: Maybe better to move this to main.py, since it'll be better able to
         # make decisions about how many initial programs to use.
         if args.dataset == "mnist":
-            program = default_progs.mnist
+            raise NotImplementedError("MNIST not supported yet")
         elif args.dataset == "cifar10":
             program = cifar_runner.sample_nets[i]
         else:

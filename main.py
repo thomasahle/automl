@@ -159,7 +159,7 @@ class ModelEvalWorker:
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
                 if self.args.verbose:
-                    print(f"Worked {self.widx} got program, {program.program[:50]}...")
+                    print(f"Worked {self.widx} got program, {repr(program.program[:100])}...")
                 result = model_tester2.run_in_worker(program.program, self.args, test_run=False)
                 # But we can still run the evaluation in parallel, and definitely don't need to
                 # wait for it to finish, before starting the next program on the gpu.

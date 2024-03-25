@@ -28,11 +28,11 @@ class Net(nn.Module):
         return x
 
     def get_optimizers(self):
+        batch_size = 256
         optimizer = optim.Adam(self.parameters(), lr=0.001)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
-        batch_size = 256
         loss_fn = nn.CrossEntropyLoss(reduction="sum")
-        return optimizer, scheduler, batch_size, loss_fn
+        return optimizer, scheduler, loss_fn, batch_size
 """,
     # Based on Keller's Net
     """
