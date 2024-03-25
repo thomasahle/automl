@@ -186,7 +186,7 @@ class ModelEvalWorker:
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
         print("Test dspy")
         # answer = dspy.TypedPredictor("question -> answer")("What is 1+1?").answer
-        print(f"Answer: {self.predictor("What is 1+1?").answer}")
+        print(f"Answer: {self.predictor('What is 1+1?').answer}")
         print("Asking model to evaluate...")
         thoughts = dspy.TypedPredictor(
             "plan, program, stdout -> thoughts",
