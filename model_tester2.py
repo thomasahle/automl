@@ -41,7 +41,10 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
     p.start()
 
     # We give the process some extra time to finish, since there is some overhead in starting the process
-    p.join(args.train_time * (1 + args.n_runs) + 10)
+    timeout = args.train_time * (1 + args.n_runs) + 10
+    if args.verbose:
+        print(f"Waiting for process to finish. Timeout: {timeout}")
+    p.join(timeout)
 
     if p.is_alive():
         # If the process is still alive after time_limit_sec, terminate it
