@@ -86,7 +86,7 @@ def ImproveSignature(args):
         )
         # plan: str = dspy.OutputField(desc="Based on the analysis, how will you design your new program?")
         program: str = dspy.OutputField(
-            desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
+            desc=f"A pytorch module, called {args.class_name}, you can include imports, but no other code."
         )
         evaluation: str = dspy.OutputField(
             desc="Short explanation of how the program is different from the previous ones."
