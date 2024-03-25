@@ -130,6 +130,7 @@ class ModelProducerWorker:
                 if make_initial and (self.args.from_scratch or self.widx <= 1):
                     make_initial = False  # Only make the initial program once
                     program = model_producer.make_initial_program(self.args, self.widx)
+                    program.personality = "Make initial program."
                     if program is None:
                         print("Failed to make initial program.")
                         continue
@@ -159,26 +160,20 @@ class ModelEvalWorker:
         self.output_queues = output_queues
 
     def run(self):
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            while True:
-                if self.program_queue.empty() and self.args.verbose:
-                    print(f"Worker {self.widx} waiting for programs...")
-                program = self.program_queue.get()
-                # test
-                # executor.submit(self.inner, dspy.Example(random="shit"))
-                # The point is that `run_in_worker` will block and ensure only one gpu-bound
-                # process is running at a time.
-                if self.args.verbose:
-                    print(f"Worker {self.widx} got program, {program.program[:500]}...")
-                result = model_tester2.run_in_worker(program.program, self.args, test_run=False)
-                # But we can still run the evaluation in parallel, and definitely don't need to
-                # wait for it to finish, before starting the next program on the gpu.
-                executor.submit(self.post_process, program, result)
-
-    def inner(self, example):
-        print("putting random shit")
-        self.output_queues[0].put(example)
-        print("random shit done")
+        while True:
+            if self.program_queue.empty() and self.args.verbose:
+                print(f"Worker {self.widx} waiting for programs...")
+            program = self.program_queue.get()
+            # test
+            # executor.submit(self.inner, dspy.Example(random="shit"))
+            # The point is that `run_in_worker` will block and ensure only one gpu-bound
+            # process is running at a time.
+            if self.args.verbose:
+                print(f"Worker {self.widx} got program, {program.program[:500]}...")
+            result = model_tester2.run_in_worker(program.program, self.args, test_run=False)
+            # But we can still run the evaluation in parallel, and definitely don't need to
+            # wait for it to finish, before starting the next program on the gpu.
+            threading.Thread(target=self.post_process, args=(program, result)).start()
 
     def post_process(self, program, result):
         acc, std = result["result"]
@@ -207,27 +202,23 @@ class ModelEvalWorker:
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
         except Exception as e:
             print(traceback.format_exc())
-            print(f"Failed to evaluate program. Error: {e}")
+            print(f"Failed to explain program. Error: {e}")
             return
         print("Evaluation done:", thoughts)
         print("Sending to output queues...")
-        try:
-            for queue in self.output_queues:
-                print("Putting in queue", queue)
-                queue.put(
-                    dspy.Example(
-                        analysis=program.analysis,
-                        program=program.program,
-                        personality=program.personality,
-                        evaluation=thoughts,
-                        stdout=result["stdout"],
-                        accuracy=acc,
-                        std=std,
-                    )
+        for queue in self.output_queues:
+            print("Putting in queue", queue)
+            queue.put(
+                dspy.Example(
+                    analysis=program.analysis,
+                    program=program.program,
+                    personality=program.personality,
+                    evaluation=thoughts,
+                    stdout=result["stdout"],
+                    accuracy=acc,
+                    std=std,
                 )
-        except Exception as e:
-            print(traceback.format_exc())
-            return
+            )
 
 
 if __name__ == "__main__":
