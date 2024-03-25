@@ -88,7 +88,7 @@ def ImproveSignature(args):
         program: str = dspy.OutputField(
             desc=f"A python lightning class, called {args.class_name}, you can include imports, but no other code."
         )
-        explanation: str = dspy.OutputField(
+        evaluation: str = dspy.OutputField(
             desc="Short explanation of how the program is different from the previous ones."
         )
 
@@ -97,8 +97,8 @@ def ImproveSignature(args):
             return check_program(args, v)
 
         # Sometimes the model invents its own score. Remove that.
-        # @pydantic.field_validator("analysis", "plan", "explanation")
-        @pydantic.field_validator("analysis", "explanation")
+        # @pydantic.field_validator("analysis", "plan", "evaluation")
+        @pydantic.field_validator("analysis", "evaluation")
         def check_for_score(cls, s):
             # Actually this doesn't do anything right now in dspy
             return re.sub("Score: [\d\.]+", "", s)
@@ -170,7 +170,7 @@ def make_initial_program(args, i):
         analysis="No previous models to analyze",
         # plan="Use a simple model to get a baseline accuracy.",
         program=program,
-        explanation="This is the first model.",
+        evaluation="This is the first model.",
     )
 
 
