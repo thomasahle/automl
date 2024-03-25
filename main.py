@@ -28,7 +28,7 @@ parser.add_argument("--max-examples", type=int, default=30)
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--from-scratch", action="store_true", help="Whether to create the initial model from scratch.")
 parser.add_argument("--max-retries", type=int, default=10)
-parser.add_argument("--class-name", type=str, default="ImageModel")
+parser.add_argument("--class-name", type=str, default="Net")
 parser.add_argument("--max-params", type=int, default=10**7)
 parser.add_argument("--n-runs", type=int, default=3, help="Number of runs to average over.")
 parser.add_argument(
