@@ -195,7 +195,8 @@ class ModelEvalWorker:
                     "plan, program, stdout -> thoughts",
                     instructions=(
                         f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
-                        + "Describe what the program did well, and what it could have done better."
+                        + "Describe in three short paragraphs, (1) how the program did, "
+                        + "(2) what worked well, (3) what it could have done better."
                     ),
                 ),
             )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
