@@ -46,6 +46,7 @@ def main(timeout):
 
 if __name__ == "__main__":
     multiprocessing.set_start_method("spawn")
+    print(multiprocessing.get_start_method())
     main(timeout=1.1)
     main(timeout=0.5)
     time.sleep(10)

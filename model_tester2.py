@@ -19,6 +19,7 @@ import cifar_runner
 def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes=2**25):
     assert isinstance(code, str)
 
+    print(f"{multiprocessing.get_start_method()=}, outer")
     read_stdout, write_stdout = multiprocessing.Pipe(duplex=False)
     read_stderr, write_stderr = multiprocessing.Pipe(duplex=False)
     parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
@@ -92,6 +93,7 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 def main_wrapper(
     code, device, dataset, test_run, time_limit, n_runs, memory_limit_bytes, child_conn, stdout_conn, stderr_conn
 ):
+    print(f"{multiprocessing.get_start_method()=}, inner")
     # Capture stdout and stderr
     sys.stdout = os.fdopen(stdout_conn.fileno(), "w", buffering=1)
     sys.stderr = os.fdopen(stderr_conn.fileno(), "w", buffering=1)
