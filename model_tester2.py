@@ -128,13 +128,13 @@ def main_wrapper(
     else:
         trace = None
         error = None
-
-    child_conn.send(
-        {
-            "traceback": trace,
-            "error": error,
-            "result": result,
-        }
-    )
+    child_conn.send({"result": 10})
+    # child_conn.send(
+    #    {
+    #        "traceback": trace,
+    #        "error": error,
+    #        "result": result,
+    #    }
+    # )
     stdout_conn.close()
     stderr_conn.close()
