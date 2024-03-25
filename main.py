@@ -168,7 +168,7 @@ class ModelEvalWorker:
                 program = self.program_queue.get()
                 # test
                 print("putting random shit")
-                self.output_queues[-1].put("random shit")
+                self.output_queues[0].put("random shit")
                 print("random shit done")
                 # The point is that `run_in_worker` will block and ensure only one gpu-bound
                 # process is running at a time.
