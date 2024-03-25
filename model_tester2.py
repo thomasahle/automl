@@ -7,11 +7,6 @@ from argparse import Namespace
 
 import cifar_runner
 
-# if sys.platform == "darwin":
-# multiprocessing.set_start_method("fork")
-# multiprocessing.set_start_method("spawn")
-# multiprocessing.set_start_method("forkserver")
-
 
 # Computes the accuracy of the model in a separate process, with resource limits
 # We have to just spin off a new process every time. Even though it would be nice
@@ -19,7 +14,6 @@ import cifar_runner
 def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes=2**25):
     assert isinstance(code, str)
 
-    print(f"{multiprocessing.get_start_method()=}, outer")
     read_stdout, write_stdout = multiprocessing.Pipe(duplex=False)
     read_stderr, write_stderr = multiprocessing.Pipe(duplex=False)
     parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
@@ -57,12 +51,20 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
 
     # Check if the process returned any result. If not, presumably it was killed.
     # For some reason this works better if it's done after the stdout/stderr stuff.
-    if not parent_conn.poll():
+    result = None
+    try:
+        if parent_conn.poll():
+            result = parent_conn.recv()
+    except FileNotFoundError as e:
+        if args.verbose:
+            print(f"Error: {e}. (Timeout?)")
+    if result is None:
         result = {
             "traceback": "",
             "error": TimeoutError("The process did not return any result."),
             "result": (0, 0),
         }
+
     # Otherwise get normal result
     else:
         result = parent_conn.recv()
@@ -109,7 +111,6 @@ def main_wrapper(
     stdout_conn,
     stderr_conn,
 ):
-    print(f"{multiprocessing.get_start_method()=}, inner")
     # Capture stdout and stderr
     sys.stdout = os.fdopen(stdout_conn.fileno(), "w", buffering=1)
     sys.stderr = os.fdopen(stderr_conn.fileno(), "w", buffering=1)
