@@ -215,6 +215,7 @@ class ModelEvalWorker:
                     personality=program.personality,
                     evaluation=thoughts,
                     stdout=result["stdout"],
+                    score=acc + std,
                     accuracy=acc,
                     std=std,
                 )
