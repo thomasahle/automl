@@ -146,16 +146,9 @@ def main_wrapper(
     child_conn.send(
         {
             "traceback": trace,
+            "error": error,
             "result": (0, 0),
-            # "result": result,
         }
     )
-    # child_conn.send(
-    #     {
-    #         "traceback": trace,
-    #         "error": error,
-    #         "result": (0, 0),
-    #     }
-    # )
     stdout_conn.close()
     stderr_conn.close()
