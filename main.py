@@ -200,8 +200,9 @@ class ModelEvalWorker:
                     "plan, program, stdout -> thoughts",
                     instructions=(
                         f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
-                        + "Describe in three short paragraphs, what can be learned from the program. "
-                        + "(1) How well the program did compared to the plan, "
+                        + "Describe in three short paragraphs, the key trends and insights of the program. "
+                        + "(1) Analyze key trends and performance indicators, such as if it "
+                        + "over-fitted, under-fitted, was unstable, if it plateaued, or was too slow to reach its full potential."
                         + "(2) What parts of the program will be useful for a future better program, "
                         + "(3) What changes will have to be made to improve the program."
                     ),
