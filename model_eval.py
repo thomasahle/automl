@@ -29,13 +29,12 @@ class EvalSignature(dspy.Signature):
 
 
 def evaluate(program, result):
-    print("Asking model to evaluate...")
     try:
         return dspy.TypedPredictor(EvalSignature)(
             plan=program.analysis,
             program=program.program,
             stdout=result["stdout"],
-        ).thoughts
+        ).summary
     except Exception as e:
         print(traceback.format_exc())
         print(f"Failed to explain program. Error: {e}")
