@@ -1,9 +1,12 @@
 import itertools
 import re
+
+import numpy as np
 import dspy
 import textwrap
 import pydantic
 import time
+import random
 
 import model_tester2
 import cifar_runner
@@ -186,7 +189,7 @@ def make_initial_program(args, i):
     )
 
 
-def make_from_demos(args, personality, demos, used_demo_subsets):
+def make_from_demos_old(args, personality, demos, used_demo_subsets):
     proposer = dspy.TypedPredictor(
         ImproveSignature(args),
         explain_errors=True,
@@ -228,4 +231,69 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
 
     pred.analysis = re.sub("Score: [\d\.]+", "", pred.analysis)  # Don't cheat
     pred.program = strip_ticks(pred.program)
+    return dspy.Example(**pred, personality=personality)
+
+
+def sample_key(demos, k, unused_keys, max_attempts=10, power=1):
+    """Sample a key from the demos based on their scores."""
+    weights = np.array([1 / r**power for r in range(1, len(demos) + 1)])
+    ranked_demos = sorted(enumerate(demos), key=lambda x: x[1].score, reverse=True)
+    for _ in range(max_attempts):
+        selected_indices = np.random.choice(len(demos), size=k, replace=False, p=weights / np.sum(weights))
+        key = tuple(sorted(ranked_demos[i][0] for i in selected_indices))
+        if key not in unused_keys:
+            return key
+    return None
+
+
+def find_unused_key(demos, k, unused_keys):
+    """Try all length k combinations, starting from the lexioraphically best."""
+    best = sorted(enumerate(demos), key=lambda x: x[1].score, reverse=True)
+    for subset in itertools.combinations(best, k):
+        key = tuple(sorted(x[0] for x in subset))
+        if key not in unused_keys:
+            return key
+    return None
+
+
+def make_from_demos(args, personality, demos, used_demo_subsets):
+    max_examples = min(args.max_examples, len(demos))
+
+    key = sample_key(demos, max_examples, used_demo_subsets)
+    if key is None:
+        key = find_unused_key(demos, max_examples, used_demo_subsets)
+        if key is None:
+            print("We've tried all subsets. Wait for a new demo.")
+            return None
+
+    subset = [demos[i] for i in key]
+    subset.sort(key=lambda x: x.score, reverse=args.best_first)
+
+    proposer = dspy.TypedPredictor(
+        ImproveSignature(args),
+        explain_errors=True,
+        max_retries=args.max_retries,
+    )
+    proposer.predictor.demos = [demo for _i, demo in subset]
+
+    # Validate demos
+    for demo in proposer.predictor.demos:
+        for name in ImproveSignature(args).fields.keys():
+            if not hasattr(demo, name):
+                raise ValueError(f"Demo is missing field {name}")
+
+    assert len(proposer.predictor.demos) > 0
+
+    # Prepare and process prediction
+    target_score = (max(demo.score for _i, demo in subset) + 1) / 2
+    try:
+        pred = proposer(score=target_score, personality=personality)
+    except ValueError as e:
+        dspy.settings.lm.inspect_history(n=1)
+        print(f"Worker failed: {e}")
+        return None
+
+    pred.analysis = re.sub("Score: [\d\.]+", "", pred.analysis)
+    pred.program = strip_ticks(pred.program)
+
     return dspy.Example(**pred, personality=personality)
