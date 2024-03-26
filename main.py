@@ -59,17 +59,8 @@ def main():
     dspy.settings.configure(lm=lm)
     args = parser.parse_args()
 
-    # Ensure we have enough personalities
     if len(personalities) < args.num_producers:
-        min_length = args.num_producers - len(personalities)
-        personalities.extend(
-            dspy.TypedPredictor(
-                dspy.Signature(
-                    f"personalities:list[str] -> more_personalities:Annotated[list[str], Field(min_length={min_length})]",
-                    f"Think of {min_length} more personalities.",
-                )
-            )(personalities).more_personalities
-        )
+        raise ValueError(f"I don't have enough personalities to create {args.num_producers} producers.")
 
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     output_folder = Path(f"best_programs_{current_time}")
