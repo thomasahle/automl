@@ -103,7 +103,7 @@ def write_example_to_file(pidx, example, args, output_folder):
     with file_path.open("w") as f:
         print(f"Dataset: {args.dataset}; Time limit: {args.train_time}s", file=f)
         print(f"Score: {score:.6f}\n", file=f)
-        print(f"Personalitity: {example.personality}", file=f)
+        print(f"Personality: {example.personality}", file=f)
         print(f"Analysis:\n{example.analysis}\n", file=f)
         print(f"Program:\n{example.program}", file=f)
         print(f"Stdout:\n{example.stdout}\n", file=f)

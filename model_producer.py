@@ -200,7 +200,7 @@ def sample_key(demos, k, unused_keys, max_attempts=10, power=1):
 
 
 def find_unused_key(demos, k, unused_keys):
-    """Try all length k combinations, starting from the lexioraphically best."""
+    """Try all length k combinations, starting from the lexicographically best."""
     best = sorted(enumerate(demos), key=lambda x: x[1].score, reverse=True)
     for subset in itertools.combinations(best, k):
         key = tuple(sorted(x[0] for x in subset))
