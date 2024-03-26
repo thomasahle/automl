@@ -274,18 +274,17 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
         explain_errors=True,
         max_retries=args.max_retries,
     )
-    proposer.predictor.demos = [demo for _i, demo in subset]
+    proposer.predictor.demos = subset
 
     # Validate demos
     for demo in proposer.predictor.demos:
         for name in ImproveSignature(args).fields.keys():
             if not hasattr(demo, name):
                 raise ValueError(f"Demo is missing field {name}")
-
     assert len(proposer.predictor.demos) > 0
 
     # Prepare and process prediction
-    target_score = (max(demo.score for _i, demo in subset) + 1) / 2
+    target_score = (max(demo.score for demo in subset) + 1) / 2
     try:
         pred = proposer(score=target_score, personality=personality)
     except ValueError as e:
@@ -295,5 +294,4 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
 
     pred.analysis = re.sub("Score: [\d\.]+", "", pred.analysis)
     pred.program = strip_ticks(pred.program)
-
     return dspy.Example(**pred, personality=personality)
