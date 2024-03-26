@@ -1,28 +1,42 @@
 import textwrap
+import traceback
 import dspy
 
 
 class EvalSignature(dspy.Signature):
     __doc__ = textwrap.dedent("""
+    You are an expert in machine learning with speciality in debugging and optimizing neural networks.
     My language model wrote a pytorch program to train a network to high accuracy in short time.
-    However, it didn't mange to do so. I need you to analyze the output and explain what went wrong.
+
+    Summarize the output of the model, making sure to include
+    - The number of epochs the model was able to complete within the time limit
+    - The speed of the model in terms of epochs per second
+    - The training behavior of the model, such as
+        - The stability of the training
+        - The convergence of the model
+        - The overfitting or underfitting of the model
+    
+    Did the program succeed in the goals of the original plan for the program?
+
+    Analyze what parts of the program contributed to these behaviors.
+    How can the program be changed to improve these behaviors?
     """)
 
-    program: str = dspy.InputField(desc="The program that failed")
-    intended_score: float = dspy.InputField(desc="The accuracy the model should get")
-    analysis: str = dspy.InputField(desc="The output of the model")
-    explanation: str = dspy.InputField(desc="The validation error trigged by the models output")
-    evaluation: str = dspy.OutputField(desc="Explain what the model did wrong")
+    plan: str = dspy.InputField(desc="The intention for the program")
+    program: str = dspy.InputField(desc="The program that was run")
+    stdout: str = dspy.InputField(desc="The output of the program")
+    summary: str = dspy.OutputField(desc="Two short paragraphs")
 
 
-def model_eval(args, to_worker, from_worker, worker_idx):
-    predictor = dspy.TypedPredictor(EvalSignature)
-    while True:
-        program, intended_score, analysis, explanation = to_worker.get()
-        pred = predictor.predict(
-            program=program,
-            intended_score=intended_score,
-            analysis=analysis,
-            explanation=explanation,
-        )
-        from_worker.put((pred.evaluation,))
+def evaluate(program, result):
+    print("Asking model to evaluate...")
+    try:
+        return dspy.TypedPredictor(EvalSignature)(
+            plan=program.analysis,
+            program=program.program,
+            stdout=result["stdout"],
+        ).thoughts
+    except Exception as e:
+        print(traceback.format_exc())
+        print(f"Failed to explain program. Error: {e}")
+        return

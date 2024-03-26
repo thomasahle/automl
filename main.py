@@ -3,7 +3,6 @@ from multiprocessing import Queue
 import multiprocessing
 from pathlib import Path
 import threading
-import traceback
 import dspy
 import torch
 import random
@@ -13,6 +12,7 @@ import os
 
 import model_producer
 import model_tester2
+import model_eval
 
 
 parser = argparse.ArgumentParser()
@@ -193,29 +193,10 @@ class ModelEvalWorker:
             return
 
         print("Worker", self.widx, "evaluated program with accuracy", acc, "+/-", std)
-        print("Asking model to evaluate...")
-        try:
-            thoughts = dspy.TypedPredictor(
-                dspy.Signature(
-                    "plan, program, stdout -> thoughts",
-                    instructions=(
-                        f"The following program achieved an accuracy of {acc:.3f} +/- {std:.3f}."
-                        + "Describe in three short paragraphs, the key trends and insights of the program. "
-                        + "(1) Analyze key trends and performance indicators, such as if it "
-                        + "over-fitted, under-fitted, was unstable, if it plateaued, or was too slow to reach its full potential."
-                        + "(2) What parts of the program will be useful for a future better program, "
-                        + "(3) What changes will have to be made to improve the program."
-                    ),
-                ),
-            )(plan=program.analysis, program=program.program, stdout=result["stdout"]).thoughts
-        except Exception as e:
-            print(traceback.format_exc())
-            print(f"Failed to explain program. Error: {e}")
-            return
+        print("Worker", self.widx, "asking model to evaluate...")
+        thoughts = model_eval.evaluate(program, result)
         print("Evaluation done:", thoughts)
-        print("Sending to output queues...")
         for queue in self.output_queues:
-            print("Putting in queue", queue)
             queue.put(
                 dspy.Example(
                     score=acc,

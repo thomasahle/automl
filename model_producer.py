@@ -5,8 +5,6 @@ import numpy as np
 import dspy
 import textwrap
 import pydantic
-import time
-import random
 
 import model_tester2
 import cifar_runner
