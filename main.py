@@ -40,7 +40,7 @@ parser.add_argument(
 
 personalities = [
     "Focus on exploitation: Make small changes to the hyper parameters of the best previous models to make them even better.",
-    "Focus on exploration: Try out completely new approaches, that generate new knowledge. Don't be afraid to fail.",
+    "Focus on exploration: Try out completely new approaches that haven't been tried before. Don't be afraid to fail.",
     "Focus on speed: Make the model run faster, but don't sacrifice accuracy.",
     "Balance exploitation and exploration: Try out new approaches, but also make small changes to the best previous models.",
 ]

@@ -62,55 +62,55 @@ def check_program(args, v):
 def ImproveSignature(args):
     class ImproveSignature(dspy.Signature):
         __doc__ = textwrap.dedent(f"""
-        Write a new pytorch module to get the best score on {args.dataset} given
-        {args.train_time} seconds training time. I will give you some examples, and you should
-        use your creativity to suggest a better model, that will achieve higher accuracy than
-        any of the previous models.
+        Write a new PyTorch module to achieve the best score on the {args.dataset} dataset
+        within {args.train_time} seconds of training time. Utilize the provided examples and
+        your creativity to propose a better model that surpasses the accuracy of previous models.
 
-        You can try things such as:
-        - Changing the batch size or learning rate
-        - Trying diferent architectures
-        - Using different activation functions
-        - Using different optimizers
-        - Using different normalization techniques
-        - Using different loss functions
-        - Using different learning rate schedules
-        - Using different weight initialization
-        - Using different regularization techniques
-        - Using different dropout rates
-        - Using different layer types and sizes
-        - Using different hyper parameters
-        - Making the model run faster
+        Consider experimenting with the following techniques and hyperparameters:
+        - Batch size and learning rate adjustments
+        - Activation functions (e.g., ReLU, LeakyReLU, Swish, etc.)
+        - Optimizers (e.g., SGD, Adam, AdamW, etc.)
+        - Normalization techniques (e.g., BatchNorm, LayerNorm, GroupNorm, etc.)
+        - Loss functions (e.g., CrossEntropyLoss, FocalLoss, LabelSmoothingLoss, etc.)
+        - Learning rate schedules (e.g., StepLR, CosineAnnealingLR, OneCycleLR, Custom schedules, etc.)
+        - Weight initialization methods (e.g., Xavier, Kaiming, Orthogonal, SVD, etc.)
+        - Regularization techniques (e.g., L1/L2 regularization, weight decay, dropout, etc.)
+        - Layer types and sizes (e.g., Conv2d, Linear, ResNet blocks, Transformers, etc.)
+        - Hyperparameter tuning (e.g., momentum, weight decay, dropout rates, kernel sizes, strides, etc.)
+        - Model optimization for faster inference
 
-        Also take care to:
-        - Not use too much memory
-        - Make every new program different from the previous ones
-        - Note the program runs with dtype=bfloat16 and memory_format=torch.channels_last.
-          Consider using x.resize or nn.Flatten rather than x.view.
-        - Don't import pretrained models
+        Ensure that your model:
+        - Efficiently manages memory usage to avoid exceeding available resources
+        - Generates unique model architectures for each new program
+        - Properly handles the dtype (bfloat16) and memory format (torch.channels_last). (Consider using x.resize or nn.Flatten instead of x.view for tensor reshaping)
+        - Avoids importing pretrained models to maintain originality
+
+        By incorporating these suggestions and techniques, strive to develop a novel and high-performing PyTorch model tailored to the {args.dataset} dataset within the given training time constraint.
+        Pay particular attention to the personality provided to guide your model design.
         """)
 
-        score: float = dspy.InputField(desc="The accuracy the model should get")
-        personality: str = dspy.InputField(desc="A personality to guide the model design")
-
+        score: float = dspy.InputField(
+            desc="The target accuracy for the model to achieve on the {args.dataset} dataset"
+        )
+        personality: str = dspy.InputField(
+            desc="A personality or design philosophy to guide the model architecture and hyperparameter choices"
+        )
         analysis: str = dspy.OutputField(
-            desc="Short analysis of what the previous models did that worked well or didn't work well. "
-            + "Answer in plain text, no Markdown."
+            desc="Provide a concise analysis of the strengths and weaknesses of the previous models. "
+            + "Based on this analysis, outline the approach you plan to take in designing the new model. "
+            + "Answer in plain text without Markdown formatting."
         )
-        # plan: str = dspy.OutputField(desc="Based on the analysis, how will you design your new program?")
         program: str = dspy.OutputField(
-            desc=f"A pytorch module, called {args.class_name}, you can include imports, but no other code."
+            desc=f"Implement a PyTorch module named {args.class_name} that incorporates the insights from the analysis. "
+            + "Include necessary imports within the module code, but do not include any additional code outside the module definition."
         )
-        evaluation: str = dspy.OutputField(
-            desc="Short explanation of how the program is different from the previous ones."
-        )
+        evaluation: str = dspy.OutputField(desc="Briefly explain how the proposed model differs from the previous ones")
 
         @pydantic.field_validator("program")
         def check_syntax(cls, v):
             return check_program(args, v)
 
         # Sometimes the model invents its own score. Remove that.
-        # @pydantic.field_validator("analysis", "plan", "evaluation")
         @pydantic.field_validator("analysis", "evaluation")
         def check_for_score(cls, s):
             # Actually this doesn't do anything right now in dspy
