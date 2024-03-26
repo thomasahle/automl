@@ -130,7 +130,7 @@ class ModelProducerWorker:
 
             # If we haven't received any demos, we may need to wait for them
             if not demos:
-                if make_initial and (self.args.from_scratch or self.widx <= len(cifar_runner.sample_nets)):
+                if make_initial and (self.args.from_scratch or self.widx < len(cifar_runner.sample_nets)):
                     make_initial = False  # Only make the initial program once
                     program = model_producer.make_initial_program(self.args, self.widx)
                     program.personality = "Make initial program."
