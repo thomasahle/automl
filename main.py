@@ -88,9 +88,17 @@ def main():
 
     # We could have a thread taking care of the eval_queue, but it's useful to do some work in
     # the main thread, so we can keep track of how many programs we've evaluated so far.
-    for pidx in range(100):
+    for pidx in range(10000):
         example = eval_queue.get()
         write_example_to_file(pidx, example, args, output_folder)
+
+    # Close everything
+    eval_queue.close()
+    program_queue.close()
+    for queue in demo_queues:
+        queue.close()
+    for thread in threads:
+        thread.join()
 
 
 def write_example_to_file(pidx, example, args, output_folder):
