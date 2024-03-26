@@ -142,7 +142,8 @@ class ModelProducerWorker:
             print(f"Making program from {self.widx}...")
             program = model_producer.make_from_demos(self.args, self.personality, demos, used_demo_subsets)
             if program is None:
-                print(f"Worker {self.widx} failed to make program.")
+                print(f"Worker {self.widx} failed to make program. Waiting for new demo.")
+                demos.append(self.demo_queue.get())
                 continue
 
             # TODO: Maybe print something to the console indicating if we are going to sleep

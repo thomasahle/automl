@@ -84,7 +84,8 @@ def ImproveSignature(args):
         Also take care to:
         - Not use too much memory
         - Make every new program different from the previous ones
-        - Note the program runs with dtype=bfloat16 and memory_format=torch.channels_last
+        - Note the program runs with dtype=bfloat16 and memory_format=torch.channels_last.
+          Consider using x.resize or nn.Flatten rather than x.view.
         - Don't import pretrained models
         """)
 
@@ -202,7 +203,6 @@ def make_from_demos(args, personality, demos, used_demo_subsets):
             break
     else:
         print("We've tried all subsets. Wait for a new demo.")
-        time.sleep(1)
         return None
 
     # Flip to keep the best at the bottom
