@@ -6,6 +6,8 @@ import time
 import traceback
 from argparse import Namespace
 
+import psutil
+
 import cifar_runner
 
 
@@ -35,6 +37,13 @@ def run_in_worker(code: str, args: Namespace, test_run=False, memory_limit_bytes
         ),
     )
     p.start()
+
+    # Set the priority of the process to be higher
+    proc = psutil.Process(p.pid)
+    try:
+        proc.nice(-10)  # Higher priority (lower nice value)
+    except PermissionError as e:
+        print(f"Permission error: You might need superuser privileges to set this nice level. {e}")
 
     # We give the process some extra time to finish, since there is some overhead in starting the process
     start_time = time.time()

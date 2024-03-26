@@ -36,7 +36,7 @@ class Net(nn.Module):
         loss_fn = nn.CrossEntropyLoss(reduction="sum")
         return optimizer, scheduler, loss_fn, batch_size
 """,
-    # Based on Keller's Net
+    # Based on Keller's Net 94
     """
 import torch
 import torch.optim as optim
@@ -76,6 +76,92 @@ class Net(nn.Module):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50000 * 10 / batch_size)
         loss_fn = nn.CrossEntropyLoss(reduction="sum", label_smoothing=0.2)
         return optimizer, scheduler, loss_fn, batch_size
+""",
+    # Based on Keller's Net 96
+    """
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from math import ceil
+
+class ConvGroup(nn.Module):
+    def __init__(self, channels_in, channels_out):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels_in, channels_out, kernel_size=3, padding="same", bias=False)
+        self.pool = nn.MaxPool2d(2)
+        self.norm1 = nn.BatchNorm2d(channels_out)
+        self.conv2 = nn.Conv2d(channels_out, channels_out, kernel_size=3, padding="same", bias=False)
+        self.norm2 = nn.BatchNorm2d(channels_out)
+        self.conv3 = nn.Conv2d(channels_out, channels_out, kernel_size=3, padding="same", bias=False)
+        self.norm3 = nn.BatchNorm2d(channels_out)
+        self.activ = nn.GELU()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.pool(x)
+        x = self.norm1(x)
+        x = self.activ(x)
+        x0 = x
+        x = self.conv2(x)
+        x = self.norm2(x)
+        x = self.activ(x)
+        x = self.conv3(x)
+        x = self.norm3(x)
+        x = self.activ(x)
+        x += x0
+        return x
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
+            nn.GELU(),
+            ConvGroup(24, 128),
+            ConvGroup(128, 512),
+            ConvGroup(512, 512),
+            nn.MaxPool2d(3),
+            nn.Flatten(),
+            nn.Linear(512, 10, bias=False),
+        )
+
+    def forward(self, x):
+        return self.net(x) / 9
+
+    def get_optimizers(self):
+        epochs = 10
+        total_train_steps = ceil(50000 * epochs)
+        batch_size = 1024
+        momentum = 0.85
+        kilostep_scale = 1024 * (1 + 1 / (1 - momentum))
+        lr = 9 / kilostep_scale
+        wd = 0.0153 * batch_size / kilostep_scale
+        lr_biases = lr * 64
+
+        norm_biases = [p for name, p in self.named_parameters() if 'norm' in name and p.requires_grad]
+        other_params = [p for name, p in self.named_parameters() if 'norm' not in name and p.requires_grad]
+        
+        optimizer = optim.SGD([
+            {'params': norm_biases, 'lr': lr_biases, 'weight_decay': wd / lr_biases},
+            {'params': other_params, 'lr': lr, 'weight_decay': wd}
+        ], momentum=momentum, nesterov=True)
+
+        lr_schedule = self.triangle_lr_schedule(total_train_steps, start=0.2, end=0.07, peak=0.23)
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_schedule)
+
+        loss_fn = nn.CrossEntropyLoss(label_smoothing=0.2)
+        
+        return optimizer, scheduler, loss_fn, batch_size
+
+    def triangle_lr_schedule(self, steps, start=0, end=0, peak=0.5):
+        def schedule(current_step):
+            xp = [0, int(peak * steps), steps]
+            fp = [start, 1, end]
+            if current_step < xp[1]:
+                return fp[0] + (fp[1] - fp[0]) * (current_step - xp[0]) / (xp[1] - xp[0])
+            else:
+                return fp[1] + (fp[2] - fp[1]) * (current_step - xp[1]) / (xp[2] - xp[1])
+        return schedule
 """,
 ]
 
