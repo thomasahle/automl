@@ -117,12 +117,12 @@ class Net(nn.Module):
         self.net = nn.Sequential(
             nn.Conv2d(3, 24, kernel_size=2, padding=0, bias=True),
             nn.GELU(),
-            ConvGroup(24, 128),
-            ConvGroup(128, 512),
-            ConvGroup(512, 512),
+            ConvGroup(24, 64),
+            ConvGroup(64, 128),
+            ConvGroup(128, 256),
             nn.MaxPool2d(3),
             nn.Flatten(),
-            nn.Linear(512, 10, bias=False),
+            nn.Linear(256, 10, bias=False),
         )
 
     def forward(self, x):
