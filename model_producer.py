@@ -187,51 +187,6 @@ def make_initial_program(args, i):
     )
 
 
-def make_from_demos_old(args, personality, demos, used_demo_subsets):
-    proposer = dspy.TypedPredictor(
-        ImproveSignature(args),
-        explain_errors=True,
-        max_retries=args.max_retries,
-    )
-
-    best = sorted(enumerate(demos), key=lambda x: x[1].score, reverse=True)
-    # Find a subset we havne't tried yet
-    max_examples = min(args.max_examples, len(best))
-    for subset in itertools.combinations(best, max_examples):
-        key = tuple(sorted(x[0] for x in subset))
-        if key not in used_demo_subsets:
-            used_demo_subsets.add(key)
-            break
-    else:
-        print("We've tried all subsets. Wait for a new demo.")
-        return None
-
-    # Flip to keep the best at the bottom
-    if not args.best_first:
-        subset = subset[::-1]
-
-    proposer.predictor.demos = [demo for _i, demo in subset]
-
-    for demo in proposer.predictor.demos:
-        for name in ImproveSignature(args).fields.keys():
-            if not hasattr(demo, name):
-                raise ValueError(f"Demo is missing field {name}")
-
-    assert len(proposer.predictor.demos) > 0
-
-    target_score = (max(demo.score for demo in demos) + 1) / 2
-    try:
-        pred = proposer(score=target_score, personality=personality)
-    except ValueError as e:
-        dspy.settings.lm.inspect_history(n=1)
-        print(f"Worker failed: {e}")
-        return None
-
-    pred.analysis = re.sub("Score: [\d\.]+", "", pred.analysis)  # Don't cheat
-    pred.program = strip_ticks(pred.program)
-    return dspy.Example(**pred, personality=personality)
-
-
 def sample_key(demos, k, unused_keys, max_attempts=10, power=1):
     """Sample a key from the demos based on their scores."""
     weights = np.array([1 / r**power for r in range(1, len(demos) + 1)])
@@ -257,6 +212,9 @@ def find_unused_key(demos, k, unused_keys):
 def make_from_demos(args, personality, demos, used_demo_subsets):
     max_examples = min(args.max_examples, len(demos))
 
+    # TODO: We are currently sampling independently (except without replacement) based on the score.
+    # But we probably also want to do something to increase diversity in the samples, so we don't
+    # just sample a bunch of small variations of the best model.
     key = sample_key(demos, max_examples, used_demo_subsets)
     if key is None:
         key = find_unused_key(demos, max_examples, used_demo_subsets)

@@ -41,8 +41,12 @@ parser.add_argument(
 personalities = [
     "Focus on exploitation: Make small changes to the hyper parameters of the best previous models to make them even better.",
     "Focus on exploration: Try out completely new approaches that haven't been tried before. Don't be afraid to fail.",
-    "Focus on speed: Make the model run faster, but don't sacrifice accuracy.",
+    "Simplicity is key: Aim for a simple and elegant model architecture. Avoid overcomplicating things.",
+    "The Mad Scientist: Embrace unconventional ideas and take risks to discover groundbreaking solutions.",
+    "Focus on speed: Make the model small and nimble, so it can train quickly and efficiently.",
+    "The Maximizer: Use deeper and larger networks to capture complex patterns",
     "Balance exploitation and exploration: Try out new approaches, but also make small changes to the best previous models.",
+    "The Collaborator: Combine the strengths of different approaches to create a powerful ensemble.",
 ]
 
 
@@ -78,7 +82,7 @@ def main():
     # Each thread/worker has an input queue and a list of output queues
     threads = [
         threading.Thread(target=ModelProducerWorker(i, args, personalities[i], demo_queues[i], program_queue).run)
-        for i in range(args.num_evals)
+        for i in range(args.num_producers)
     ]
     threads.append(
         threading.Thread(target=ModelEvalWorker(len(threads), args, program_queue, [eval_queue] + demo_queues).run)
